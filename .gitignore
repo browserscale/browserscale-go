@@ -1,0 +1,4 @@
+# Binaries and test artifacts
+*.exe
+*.test
+*.out
