@@ -140,6 +140,21 @@ type ScreenshotResult struct {
 	Height     int32
 }
 
+// ReadCanvasResult is the pixel readback of a <canvas>, returned by
+// [CloudBrowser.ReadCanvas]. DataBase64 holds the encoded image bytes (PNG by
+// default) or the raw RGBA buffer when Opts.Format == "rgba". OriginClean
+// reports whether the canvas was untainted (informational; the read succeeds
+// either way).
+type ReadCanvasResult struct {
+	Success       bool
+	FrameId       string
+	BackendNodeId int32
+	DataBase64    string
+	Width         int32
+	Height        int32
+	OriginClean   bool
+}
+
 // InspectResult describes the topmost element hit at viewport-relative
 // (x, y). BackendNodeId == 0 means nothing was found at that position.
 type InspectResult struct {

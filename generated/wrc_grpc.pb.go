@@ -49,6 +49,7 @@ const (
 	Browser_InspectAtPosition_FullMethodName  = "/browserscale.v1.Browser/InspectAtPosition"
 	Browser_HighlightNode_FullMethodName      = "/browserscale.v1.Browser/HighlightNode"
 	Browser_Screenshot_FullMethodName         = "/browserscale.v1.Browser/Screenshot"
+	Browser_ReadCanvas_FullMethodName         = "/browserscale.v1.Browser/ReadCanvas"
 	Browser_InsertText_FullMethodName         = "/browserscale.v1.Browser/InsertText"
 	Browser_PressKey_FullMethodName           = "/browserscale.v1.Browser/PressKey"
 	Browser_ReleaseKey_FullMethodName         = "/browserscale.v1.Browser/ReleaseKey"
@@ -99,6 +100,7 @@ type BrowserClient interface {
 	HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Screenshot / capture
 	Screenshot(ctx context.Context, in *ScreenshotRequest, opts ...grpc.CallOption) (*ScreenshotResponse, error)
+	ReadCanvas(ctx context.Context, in *ReadCanvasRequest, opts ...grpc.CallOption) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
 	InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -406,6 +408,16 @@ func (c *browserClient) Screenshot(ctx context.Context, in *ScreenshotRequest, o
 	return out, nil
 }
 
+func (c *browserClient) ReadCanvas(ctx context.Context, in *ReadCanvasRequest, opts ...grpc.CallOption) (*ReadCanvasResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReadCanvasResponse)
+	err := c.cc.Invoke(ctx, Browser_ReadCanvas_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -499,6 +511,7 @@ type BrowserServer interface {
 	HighlightNode(context.Context, *HighlightNodeRequest) (*emptypb.Empty, error)
 	// Screenshot / capture
 	Screenshot(context.Context, *ScreenshotRequest) (*ScreenshotResponse, error)
+	ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
 	InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error)
 	PressKey(context.Context, *PressKeyRequest) (*emptypb.Empty, error)
@@ -602,6 +615,9 @@ func (UnimplementedBrowserServer) HighlightNode(context.Context, *HighlightNodeR
 }
 func (UnimplementedBrowserServer) Screenshot(context.Context, *ScreenshotRequest) (*ScreenshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Screenshot not implemented")
+}
+func (UnimplementedBrowserServer) ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReadCanvas not implemented")
 }
 func (UnimplementedBrowserServer) InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InsertText not implemented")
@@ -1161,6 +1177,24 @@ func _Browser_Screenshot_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_ReadCanvas_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadCanvasRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).ReadCanvas(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_ReadCanvas_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).ReadCanvas(ctx, req.(*ReadCanvasRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Browser_InsertText_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(InsertTextRequest)
 	if err := dec(in); err != nil {
@@ -1373,6 +1407,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Screenshot",
 			Handler:    _Browser_Screenshot_Handler,
+		},
+		{
+			MethodName: "ReadCanvas",
+			Handler:    _Browser_ReadCanvas_Handler,
 		},
 		{
 			MethodName: "InsertText",

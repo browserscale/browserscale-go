@@ -4670,6 +4670,257 @@ func (x *ScreenshotResponse) GetHeight() int32 {
 	return 0
 }
 
+// ReadCanvas reads the pixels of a single <canvas> element directly in the
+// renderer, bypassing the origin-clean (tainted) security check and without
+// executing page JavaScript — so cross-origin/tainted canvases (common in
+// captchas) can be read. The element is addressed like any other action
+// target: by selector, js_expression, or backend_node_id.
+type ReadCanvasRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	PageId        string                 `protobuf:"bytes,3,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
+	BackendNodeId *int32                 `protobuf:"varint,4,opt,name=backend_node_id,json=backendNodeId,proto3,oneof" json:"backend_node_id,omitempty"`
+	Selector      *string                `protobuf:"bytes,5,opt,name=selector,proto3,oneof" json:"selector,omitempty"`
+	JsExpression  *string                `protobuf:"bytes,6,opt,name=js_expression,json=jsExpression,proto3,oneof" json:"js_expression,omitempty"`
+	// Specific frameId, empty/omitted for main frame, or "ALL_FRAMES".
+	FrameId *string `protobuf:"bytes,7,opt,name=frame_id,json=frameId,proto3,oneof" json:"frame_id,omitempty"`
+	// Output encoding: "png" (default), "jpeg", "webp", or "rgba" for the raw
+	// unpremultiplied RGBA pixel buffer.
+	Format *string `protobuf:"bytes,8,opt,name=format,proto3,oneof" json:"format,omitempty"`
+	// Encode quality 0-100 for "jpeg"/"webp" (ignored otherwise). Default 90.
+	Quality *int32 `protobuf:"varint,9,opt,name=quality,proto3,oneof" json:"quality,omitempty"`
+	// Optional sub-rectangle in canvas pixels (mirrors getImageData). The full
+	// canvas is read when sw/sh are omitted or <= 0.
+	Sx            *int32 `protobuf:"varint,10,opt,name=sx,proto3,oneof" json:"sx,omitempty"`
+	Sy            *int32 `protobuf:"varint,11,opt,name=sy,proto3,oneof" json:"sy,omitempty"`
+	Sw            *int32 `protobuf:"varint,12,opt,name=sw,proto3,oneof" json:"sw,omitempty"`
+	Sh            *int32 `protobuf:"varint,13,opt,name=sh,proto3,oneof" json:"sh,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadCanvasRequest) Reset() {
+	*x = ReadCanvasRequest{}
+	mi := &file_wrc_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadCanvasRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadCanvasRequest) ProtoMessage() {}
+
+func (x *ReadCanvasRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadCanvasRequest.ProtoReflect.Descriptor instead.
+func (*ReadCanvasRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *ReadCanvasRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetPageId() string {
+	if x != nil {
+		return x.PageId
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetBackendNodeId() int32 {
+	if x != nil && x.BackendNodeId != nil {
+		return *x.BackendNodeId
+	}
+	return 0
+}
+
+func (x *ReadCanvasRequest) GetSelector() string {
+	if x != nil && x.Selector != nil {
+		return *x.Selector
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetJsExpression() string {
+	if x != nil && x.JsExpression != nil {
+		return *x.JsExpression
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetFrameId() string {
+	if x != nil && x.FrameId != nil {
+		return *x.FrameId
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetFormat() string {
+	if x != nil && x.Format != nil {
+		return *x.Format
+	}
+	return ""
+}
+
+func (x *ReadCanvasRequest) GetQuality() int32 {
+	if x != nil && x.Quality != nil {
+		return *x.Quality
+	}
+	return 0
+}
+
+func (x *ReadCanvasRequest) GetSx() int32 {
+	if x != nil && x.Sx != nil {
+		return *x.Sx
+	}
+	return 0
+}
+
+func (x *ReadCanvasRequest) GetSy() int32 {
+	if x != nil && x.Sy != nil {
+		return *x.Sy
+	}
+	return 0
+}
+
+func (x *ReadCanvasRequest) GetSw() int32 {
+	if x != nil && x.Sw != nil {
+		return *x.Sw
+	}
+	return 0
+}
+
+func (x *ReadCanvasRequest) GetSh() int32 {
+	if x != nil && x.Sh != nil {
+		return *x.Sh
+	}
+	return 0
+}
+
+type ReadCanvasResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Success bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// Frame the canvas was resolved in.
+	FrameId string `protobuf:"bytes,2,opt,name=frame_id,json=frameId,proto3" json:"frame_id,omitempty"`
+	// Resolved DevTools backendNodeId of the canvas.
+	BackendNodeId int32 `protobuf:"varint,3,opt,name=backend_node_id,json=backendNodeId,proto3" json:"backend_node_id,omitempty"`
+	// Encoded image bytes as base64 (PNG by default), or the raw RGBA buffer
+	// when format == "rgba".
+	DataBase64 string `protobuf:"bytes,4,opt,name=data_base64,json=dataBase64,proto3" json:"data_base64,omitempty"`
+	// Canvas width in pixels.
+	Width int32 `protobuf:"varint,5,opt,name=width,proto3" json:"width,omitempty"`
+	// Canvas height in pixels.
+	Height int32 `protobuf:"varint,6,opt,name=height,proto3" json:"height,omitempty"`
+	// Whether the canvas was origin-clean (untainted). Informational only —
+	// the read succeeds regardless.
+	OriginClean   bool `protobuf:"varint,7,opt,name=origin_clean,json=originClean,proto3" json:"origin_clean,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadCanvasResponse) Reset() {
+	*x = ReadCanvasResponse{}
+	mi := &file_wrc_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadCanvasResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadCanvasResponse) ProtoMessage() {}
+
+func (x *ReadCanvasResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadCanvasResponse.ProtoReflect.Descriptor instead.
+func (*ReadCanvasResponse) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *ReadCanvasResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ReadCanvasResponse) GetFrameId() string {
+	if x != nil {
+		return x.FrameId
+	}
+	return ""
+}
+
+func (x *ReadCanvasResponse) GetBackendNodeId() int32 {
+	if x != nil {
+		return x.BackendNodeId
+	}
+	return 0
+}
+
+func (x *ReadCanvasResponse) GetDataBase64() string {
+	if x != nil {
+		return x.DataBase64
+	}
+	return ""
+}
+
+func (x *ReadCanvasResponse) GetWidth() int32 {
+	if x != nil {
+		return x.Width
+	}
+	return 0
+}
+
+func (x *ReadCanvasResponse) GetHeight() int32 {
+	if x != nil {
+		return x.Height
+	}
+	return 0
+}
+
+func (x *ReadCanvasResponse) GetOriginClean() bool {
+	if x != nil {
+		return x.OriginClean
+	}
+	return false
+}
+
 type SolveCaptchaRequest struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
@@ -4684,7 +4935,7 @@ type SolveCaptchaRequest struct {
 
 func (x *SolveCaptchaRequest) Reset() {
 	*x = SolveCaptchaRequest{}
-	mi := &file_wrc_proto_msgTypes[63]
+	mi := &file_wrc_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4696,7 +4947,7 @@ func (x *SolveCaptchaRequest) String() string {
 func (*SolveCaptchaRequest) ProtoMessage() {}
 
 func (x *SolveCaptchaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_wrc_proto_msgTypes[63]
+	mi := &file_wrc_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4709,7 +4960,7 @@ func (x *SolveCaptchaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SolveCaptchaRequest.ProtoReflect.Descriptor instead.
 func (*SolveCaptchaRequest) Descriptor() ([]byte, []int) {
-	return file_wrc_proto_rawDescGZIP(), []int{63}
+	return file_wrc_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *SolveCaptchaRequest) GetSessionId() string {
@@ -4752,7 +5003,7 @@ type SolveCaptchaResponse struct {
 
 func (x *SolveCaptchaResponse) Reset() {
 	*x = SolveCaptchaResponse{}
-	mi := &file_wrc_proto_msgTypes[64]
+	mi := &file_wrc_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4764,7 +5015,7 @@ func (x *SolveCaptchaResponse) String() string {
 func (*SolveCaptchaResponse) ProtoMessage() {}
 
 func (x *SolveCaptchaResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_wrc_proto_msgTypes[64]
+	mi := &file_wrc_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4777,7 +5028,7 @@ func (x *SolveCaptchaResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SolveCaptchaResponse.ProtoReflect.Descriptor instead.
 func (*SolveCaptchaResponse) Descriptor() ([]byte, []int) {
-	return file_wrc_proto_rawDescGZIP(), []int{64}
+	return file_wrc_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *SolveCaptchaResponse) GetResult() string {
@@ -5308,7 +5559,43 @@ const file_wrc_proto_rawDesc = "" +
 	"\vdata_base64\x18\x01 \x01(\tR\n" +
 	"dataBase64\x12\x14\n" +
 	"\x05width\x18\x02 \x01(\x05R\x05width\x12\x16\n" +
-	"\x06height\x18\x03 \x01(\x05R\x06height\"\x8f\x01\n" +
+	"\x06height\x18\x03 \x01(\x05R\x06height\"\xff\x03\n" +
+	"\x11ReadCanvasRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x17\n" +
+	"\apage_id\x18\x03 \x01(\tR\x06pageId\x12+\n" +
+	"\x0fbackend_node_id\x18\x04 \x01(\x05H\x00R\rbackendNodeId\x88\x01\x01\x12\x1f\n" +
+	"\bselector\x18\x05 \x01(\tH\x01R\bselector\x88\x01\x01\x12(\n" +
+	"\rjs_expression\x18\x06 \x01(\tH\x02R\fjsExpression\x88\x01\x01\x12\x1e\n" +
+	"\bframe_id\x18\a \x01(\tH\x03R\aframeId\x88\x01\x01\x12\x1b\n" +
+	"\x06format\x18\b \x01(\tH\x04R\x06format\x88\x01\x01\x12\x1d\n" +
+	"\aquality\x18\t \x01(\x05H\x05R\aquality\x88\x01\x01\x12\x13\n" +
+	"\x02sx\x18\n" +
+	" \x01(\x05H\x06R\x02sx\x88\x01\x01\x12\x13\n" +
+	"\x02sy\x18\v \x01(\x05H\aR\x02sy\x88\x01\x01\x12\x13\n" +
+	"\x02sw\x18\f \x01(\x05H\bR\x02sw\x88\x01\x01\x12\x13\n" +
+	"\x02sh\x18\r \x01(\x05H\tR\x02sh\x88\x01\x01B\x12\n" +
+	"\x10_backend_node_idB\v\n" +
+	"\t_selectorB\x10\n" +
+	"\x0e_js_expressionB\v\n" +
+	"\t_frame_idB\t\n" +
+	"\a_formatB\n" +
+	"\n" +
+	"\b_qualityB\x05\n" +
+	"\x03_sxB\x05\n" +
+	"\x03_syB\x05\n" +
+	"\x03_swB\x05\n" +
+	"\x03_sh\"\xe3\x01\n" +
+	"\x12ReadCanvasResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x19\n" +
+	"\bframe_id\x18\x02 \x01(\tR\aframeId\x12&\n" +
+	"\x0fbackend_node_id\x18\x03 \x01(\x05R\rbackendNodeId\x12\x1f\n" +
+	"\vdata_base64\x18\x04 \x01(\tR\n" +
+	"dataBase64\x12\x14\n" +
+	"\x05width\x18\x05 \x01(\x05R\x05width\x12\x16\n" +
+	"\x06height\x18\x06 \x01(\x05R\x06height\x12!\n" +
+	"\forigin_clean\x18\a \x01(\bR\voriginClean\"\x8f\x01\n" +
 	"\x13SolveCaptchaRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
@@ -5317,7 +5604,7 @@ const file_wrc_proto_rawDesc = "" +
 	"timeout_ms\x18\x03 \x01(\x05R\ttimeoutMs\x12!\n" +
 	"\fretry_amount\x18\x04 \x01(\x05R\vretryAmount\".\n" +
 	"\x14SolveCaptchaResponse\x12\x16\n" +
-	"\x06result\x18\x01 \x01(\tR\x06result2\xff\x15\n" +
+	"\x06result\x18\x01 \x01(\tR\x06result2\xd6\x16\n" +
 	"\aBrowser\x12D\n" +
 	"\bSetProxy\x12 .browserscale.v1.SetProxyRequest\x1a\x16.google.protobuf.Empty\x12O\n" +
 	"\bGetPages\x12 .browserscale.v1.GetPagesRequest\x1a!.browserscale.v1.GetPagesResponse\x12O\n" +
@@ -5354,7 +5641,9 @@ const file_wrc_proto_rawDesc = "" +
 	"\x11InspectAtPosition\x12).browserscale.v1.InspectAtPositionRequest\x1a*.browserscale.v1.InspectAtPositionResponse\x12N\n" +
 	"\rHighlightNode\x12%.browserscale.v1.HighlightNodeRequest\x1a\x16.google.protobuf.Empty\x12U\n" +
 	"\n" +
-	"Screenshot\x12\".browserscale.v1.ScreenshotRequest\x1a#.browserscale.v1.ScreenshotResponse\x12H\n" +
+	"Screenshot\x12\".browserscale.v1.ScreenshotRequest\x1a#.browserscale.v1.ScreenshotResponse\x12U\n" +
+	"\n" +
+	"ReadCanvas\x12\".browserscale.v1.ReadCanvasRequest\x1a#.browserscale.v1.ReadCanvasResponse\x12H\n" +
 	"\n" +
 	"InsertText\x12\".browserscale.v1.InsertTextRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
 	"\bPressKey\x12 .browserscale.v1.PressKeyRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
@@ -5375,7 +5664,7 @@ func file_wrc_proto_rawDescGZIP() []byte {
 	return file_wrc_proto_rawDescData
 }
 
-var file_wrc_proto_msgTypes = make([]protoimpl.MessageInfo, 65)
+var file_wrc_proto_msgTypes = make([]protoimpl.MessageInfo, 67)
 var file_wrc_proto_goTypes = []any{
 	(*Rect)(nil),                       // 0: browserscale.v1.Rect
 	(*FrameInfo)(nil),                  // 1: browserscale.v1.FrameInfo
@@ -5440,9 +5729,11 @@ var file_wrc_proto_goTypes = []any{
 	(*GetSelectionResponse)(nil),       // 60: browserscale.v1.GetSelectionResponse
 	(*ScreenshotRequest)(nil),          // 61: browserscale.v1.ScreenshotRequest
 	(*ScreenshotResponse)(nil),         // 62: browserscale.v1.ScreenshotResponse
-	(*SolveCaptchaRequest)(nil),        // 63: browserscale.v1.SolveCaptchaRequest
-	(*SolveCaptchaResponse)(nil),       // 64: browserscale.v1.SolveCaptchaResponse
-	(*emptypb.Empty)(nil),              // 65: google.protobuf.Empty
+	(*ReadCanvasRequest)(nil),          // 63: browserscale.v1.ReadCanvasRequest
+	(*ReadCanvasResponse)(nil),         // 64: browserscale.v1.ReadCanvasResponse
+	(*SolveCaptchaRequest)(nil),        // 65: browserscale.v1.SolveCaptchaRequest
+	(*SolveCaptchaResponse)(nil),       // 66: browserscale.v1.SolveCaptchaResponse
+	(*emptypb.Empty)(nil),              // 67: google.protobuf.Empty
 }
 var file_wrc_proto_depIdxs = []int32{
 	0,  // 0: browserscale.v1.FrameInfo.absolute_rect:type_name -> browserscale.v1.Rect
@@ -5498,47 +5789,49 @@ var file_wrc_proto_depIdxs = []int32{
 	53, // 50: browserscale.v1.Browser.InspectAtPosition:input_type -> browserscale.v1.InspectAtPositionRequest
 	55, // 51: browserscale.v1.Browser.HighlightNode:input_type -> browserscale.v1.HighlightNodeRequest
 	61, // 52: browserscale.v1.Browser.Screenshot:input_type -> browserscale.v1.ScreenshotRequest
-	56, // 53: browserscale.v1.Browser.InsertText:input_type -> browserscale.v1.InsertTextRequest
-	57, // 54: browserscale.v1.Browser.PressKey:input_type -> browserscale.v1.PressKeyRequest
-	58, // 55: browserscale.v1.Browser.ReleaseKey:input_type -> browserscale.v1.ReleaseKeyRequest
-	59, // 56: browserscale.v1.Browser.GetSelection:input_type -> browserscale.v1.GetSelectionRequest
-	63, // 57: browserscale.v1.Browser.SolveCaptcha:input_type -> browserscale.v1.SolveCaptchaRequest
-	65, // 58: browserscale.v1.Browser.SetProxy:output_type -> google.protobuf.Empty
-	16, // 59: browserscale.v1.Browser.GetPages:output_type -> browserscale.v1.GetPagesResponse
-	18, // 60: browserscale.v1.Browser.Navigate:output_type -> browserscale.v1.NavigateResponse
-	65, // 61: browserscale.v1.Browser.LoadHTML:output_type -> google.protobuf.Empty
-	21, // 62: browserscale.v1.Browser.Evaluate:output_type -> browserscale.v1.EvaluateResponse
-	10, // 63: browserscale.v1.Browser.WaitForAny:output_type -> browserscale.v1.WaitResult
-	13, // 64: browserscale.v1.Browser.SelectOption:output_type -> browserscale.v1.SelectOptionResult
-	11, // 65: browserscale.v1.Browser.ScrollTo:output_type -> browserscale.v1.ElementResult
-	11, // 66: browserscale.v1.Browser.MoveTo:output_type -> browserscale.v1.ElementResult
-	11, // 67: browserscale.v1.Browser.Click:output_type -> browserscale.v1.ElementResult
-	12, // 68: browserscale.v1.Browser.Drag:output_type -> browserscale.v1.DragResult
-	11, // 69: browserscale.v1.Browser.Fill:output_type -> browserscale.v1.ElementResult
-	65, // 70: browserscale.v1.Browser.SetBlockList:output_type -> google.protobuf.Empty
-	65, // 71: browserscale.v1.Browser.SetStaticPaths:output_type -> google.protobuf.Empty
-	32, // 72: browserscale.v1.Browser.WaitForAnyRequest:output_type -> browserscale.v1.WaitForAnyRequestResponse
-	34, // 73: browserscale.v1.Browser.WaitForAnyResponse:output_type -> browserscale.v1.WaitForAnyResponseResponse
-	36, // 74: browserscale.v1.Browser.ModifyRequest:output_type -> browserscale.v1.ModifyRequestResponse
-	38, // 75: browserscale.v1.Browser.GetCookies:output_type -> browserscale.v1.GetCookiesResponse
-	65, // 76: browserscale.v1.Browser.SetCookies:output_type -> google.protobuf.Empty
-	65, // 77: browserscale.v1.Browser.ClearCookies:output_type -> google.protobuf.Empty
-	44, // 78: browserscale.v1.Browser.GetStorage:output_type -> browserscale.v1.GetStorageResponse
-	65, // 79: browserscale.v1.Browser.SetStorage:output_type -> google.protobuf.Empty
-	65, // 80: browserscale.v1.Browser.ClearStorage:output_type -> google.protobuf.Empty
-	48, // 81: browserscale.v1.Browser.GetDOM:output_type -> browserscale.v1.GetDOMResponse
-	52, // 82: browserscale.v1.Browser.GetDOMHash:output_type -> browserscale.v1.GetDOMHashResponse
-	50, // 83: browserscale.v1.Browser.GetObservation:output_type -> browserscale.v1.GetObservationResponse
-	54, // 84: browserscale.v1.Browser.InspectAtPosition:output_type -> browserscale.v1.InspectAtPositionResponse
-	65, // 85: browserscale.v1.Browser.HighlightNode:output_type -> google.protobuf.Empty
-	62, // 86: browserscale.v1.Browser.Screenshot:output_type -> browserscale.v1.ScreenshotResponse
-	65, // 87: browserscale.v1.Browser.InsertText:output_type -> google.protobuf.Empty
-	65, // 88: browserscale.v1.Browser.PressKey:output_type -> google.protobuf.Empty
-	65, // 89: browserscale.v1.Browser.ReleaseKey:output_type -> google.protobuf.Empty
-	60, // 90: browserscale.v1.Browser.GetSelection:output_type -> browserscale.v1.GetSelectionResponse
-	64, // 91: browserscale.v1.Browser.SolveCaptcha:output_type -> browserscale.v1.SolveCaptchaResponse
-	58, // [58:92] is the sub-list for method output_type
-	24, // [24:58] is the sub-list for method input_type
+	63, // 53: browserscale.v1.Browser.ReadCanvas:input_type -> browserscale.v1.ReadCanvasRequest
+	56, // 54: browserscale.v1.Browser.InsertText:input_type -> browserscale.v1.InsertTextRequest
+	57, // 55: browserscale.v1.Browser.PressKey:input_type -> browserscale.v1.PressKeyRequest
+	58, // 56: browserscale.v1.Browser.ReleaseKey:input_type -> browserscale.v1.ReleaseKeyRequest
+	59, // 57: browserscale.v1.Browser.GetSelection:input_type -> browserscale.v1.GetSelectionRequest
+	65, // 58: browserscale.v1.Browser.SolveCaptcha:input_type -> browserscale.v1.SolveCaptchaRequest
+	67, // 59: browserscale.v1.Browser.SetProxy:output_type -> google.protobuf.Empty
+	16, // 60: browserscale.v1.Browser.GetPages:output_type -> browserscale.v1.GetPagesResponse
+	18, // 61: browserscale.v1.Browser.Navigate:output_type -> browserscale.v1.NavigateResponse
+	67, // 62: browserscale.v1.Browser.LoadHTML:output_type -> google.protobuf.Empty
+	21, // 63: browserscale.v1.Browser.Evaluate:output_type -> browserscale.v1.EvaluateResponse
+	10, // 64: browserscale.v1.Browser.WaitForAny:output_type -> browserscale.v1.WaitResult
+	13, // 65: browserscale.v1.Browser.SelectOption:output_type -> browserscale.v1.SelectOptionResult
+	11, // 66: browserscale.v1.Browser.ScrollTo:output_type -> browserscale.v1.ElementResult
+	11, // 67: browserscale.v1.Browser.MoveTo:output_type -> browserscale.v1.ElementResult
+	11, // 68: browserscale.v1.Browser.Click:output_type -> browserscale.v1.ElementResult
+	12, // 69: browserscale.v1.Browser.Drag:output_type -> browserscale.v1.DragResult
+	11, // 70: browserscale.v1.Browser.Fill:output_type -> browserscale.v1.ElementResult
+	67, // 71: browserscale.v1.Browser.SetBlockList:output_type -> google.protobuf.Empty
+	67, // 72: browserscale.v1.Browser.SetStaticPaths:output_type -> google.protobuf.Empty
+	32, // 73: browserscale.v1.Browser.WaitForAnyRequest:output_type -> browserscale.v1.WaitForAnyRequestResponse
+	34, // 74: browserscale.v1.Browser.WaitForAnyResponse:output_type -> browserscale.v1.WaitForAnyResponseResponse
+	36, // 75: browserscale.v1.Browser.ModifyRequest:output_type -> browserscale.v1.ModifyRequestResponse
+	38, // 76: browserscale.v1.Browser.GetCookies:output_type -> browserscale.v1.GetCookiesResponse
+	67, // 77: browserscale.v1.Browser.SetCookies:output_type -> google.protobuf.Empty
+	67, // 78: browserscale.v1.Browser.ClearCookies:output_type -> google.protobuf.Empty
+	44, // 79: browserscale.v1.Browser.GetStorage:output_type -> browserscale.v1.GetStorageResponse
+	67, // 80: browserscale.v1.Browser.SetStorage:output_type -> google.protobuf.Empty
+	67, // 81: browserscale.v1.Browser.ClearStorage:output_type -> google.protobuf.Empty
+	48, // 82: browserscale.v1.Browser.GetDOM:output_type -> browserscale.v1.GetDOMResponse
+	52, // 83: browserscale.v1.Browser.GetDOMHash:output_type -> browserscale.v1.GetDOMHashResponse
+	50, // 84: browserscale.v1.Browser.GetObservation:output_type -> browserscale.v1.GetObservationResponse
+	54, // 85: browserscale.v1.Browser.InspectAtPosition:output_type -> browserscale.v1.InspectAtPositionResponse
+	67, // 86: browserscale.v1.Browser.HighlightNode:output_type -> google.protobuf.Empty
+	62, // 87: browserscale.v1.Browser.Screenshot:output_type -> browserscale.v1.ScreenshotResponse
+	64, // 88: browserscale.v1.Browser.ReadCanvas:output_type -> browserscale.v1.ReadCanvasResponse
+	67, // 89: browserscale.v1.Browser.InsertText:output_type -> google.protobuf.Empty
+	67, // 90: browserscale.v1.Browser.PressKey:output_type -> google.protobuf.Empty
+	67, // 91: browserscale.v1.Browser.ReleaseKey:output_type -> google.protobuf.Empty
+	60, // 92: browserscale.v1.Browser.GetSelection:output_type -> browserscale.v1.GetSelectionResponse
+	66, // 93: browserscale.v1.Browser.SolveCaptcha:output_type -> browserscale.v1.SolveCaptchaResponse
+	59, // [59:94] is the sub-list for method output_type
+	24, // [24:59] is the sub-list for method input_type
 	24, // [24:24] is the sub-list for extension type_name
 	24, // [24:24] is the sub-list for extension extendee
 	0,  // [0:24] is the sub-list for field type_name
@@ -5576,13 +5869,14 @@ func file_wrc_proto_init() {
 	file_wrc_proto_msgTypes[57].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[58].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[61].OneofWrappers = []any{}
+	file_wrc_proto_msgTypes[63].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wrc_proto_rawDesc), len(file_wrc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   65,
+			NumMessages:   67,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
