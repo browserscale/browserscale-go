@@ -136,17 +136,58 @@ func storageFromProto(es []*generated.StorageOriginEntry) []StorageOriginEntry {
 	return out
 }
 
-func waitResultFromProto(r *generated.WaitResult) *WaitResult {
+// waitResultFromProto splits a WaitResult into the res, err shape used by the
+// SDK: the match payload always, plus a typed *WaitError when no condition
+// matched before the deadline (index=-1 with an error detail). The returned
+// error is nil on a match.
+func waitResultFromProto(r *generated.WaitResult) (*WaitResult, *WaitError) {
 	if r == nil {
-		return nil
+		return nil, nil
 	}
-	return &WaitResult{
+	res := &WaitResult{
 		Index:         r.Index,
 		FrameId:       r.FrameId,
 		BackendNodeId: r.BackendNodeId,
 		IsVisible:     r.IsVisible,
 		Bounds:        rectFromProto(r.Bounds),
 	}
+	if r.Error == nil {
+		return res, nil
+	}
+	return res, waitErrorFromProto(r.Error)
+}
+
+func waitErrorFromProto(e *generated.WaitError) *WaitError {
+	if e == nil {
+		return nil
+	}
+	out := &WaitError{
+		Code:    e.Code,
+		Message: e.Message,
+	}
+	for _, c := range e.Conditions {
+		out.Conditions = append(out.Conditions, waitConditionStatusFromProto(c))
+	}
+	return out
+}
+
+func waitConditionStatusFromProto(c *generated.WaitConditionStatus) WaitConditionStatus {
+	if c == nil {
+		return WaitConditionStatus{}
+	}
+	out := WaitConditionStatus{
+		Index:         c.Index,
+		State:         c.State,
+		BackendNodeId: c.BackendNodeId,
+		FrameId:       c.FrameId,
+		IsVisible:     c.IsVisible,
+		Occluder:      occluderInfoFromProto(c.Occluder),
+	}
+	if c.Bounds != nil {
+		b := rectFromProto(c.Bounds)
+		out.Bounds = &b
+	}
+	return out
 }
 
 func elementResultFromProto(r *generated.ElementResult) *ElementResult {
@@ -164,11 +205,101 @@ func elementResultFromProto(r *generated.ElementResult) *ElementResult {
 	}
 }
 
-func dragResultFromProto(r *generated.DragResult) *DragResult {
+// clickResultFromProto splits a ClickResult into the res, err shape used by the
+// SDK: the ElementResult payload always, plus a typed *ClickError when the click
+// did not land (success=false with an error detail). The returned error is nil
+// on success.
+func clickResultFromProto(r *generated.ClickResult) (*ElementResult, *ClickError) {
 	if r == nil {
+		return nil, nil
+	}
+	res := &ElementResult{
+		Success:       r.Success,
+		FrameId:       r.FrameId,
+		BackendNodeId: r.BackendNodeId,
+		IsVisible:     r.IsVisible,
+		Bounds:        rectFromProto(r.Bounds),
+		RootX:         r.RootX,
+		RootY:         r.RootY,
+	}
+	if r.Success || r.Error == nil {
+		return res, nil
+	}
+	return res, clickErrorFromProto(r.Error)
+}
+
+func clickErrorFromProto(e *generated.ClickError) *ClickError {
+	if e == nil {
 		return nil
 	}
-	return &DragResult{
+	return &ClickError{
+		Code:           e.Code,
+		Message:        e.Message,
+		Occluder:       occluderInfoFromProto(e.Occluder),
+		EvadeAttempted: e.GetEvadeAttempted(),
+	}
+}
+
+// fillResultFromProto splits a FillResult into the res, err shape used by the
+// SDK: the ElementResult payload always (is_visible/bounds are not part of
+// fill, so they stay zero), plus a typed *FillError when the field could not be
+// focused/typed. The returned error is nil on success.
+func fillResultFromProto(r *generated.FillResult) (*ElementResult, *FillError) {
+	if r == nil {
+		return nil, nil
+	}
+	res := &ElementResult{
+		Success:       r.Success,
+		FrameId:       r.FrameId,
+		BackendNodeId: r.BackendNodeId,
+		RootX:         r.RootX,
+		RootY:         r.RootY,
+	}
+	if r.Success || r.Error == nil {
+		return res, nil
+	}
+	return res, fillErrorFromProto(r.Error)
+}
+
+func fillErrorFromProto(e *generated.FillError) *FillError {
+	if e == nil {
+		return nil
+	}
+	return &FillError{
+		Code:       e.Code,
+		Message:    e.Message,
+		ClickError: clickErrorFromProto(e.ClickError),
+	}
+}
+
+func occluderInfoFromProto(o *generated.OccluderInfo) *OccluderInfo {
+	if o == nil {
+		return nil
+	}
+	return &OccluderInfo{
+		BackendNodeId:          o.BackendNodeId,
+		FrameId:                o.FrameId,
+		TagName:                o.TagName,
+		Id:                     o.GetId(),
+		ClassName:              o.GetClassName(),
+		Text:                   o.GetText(),
+		Bounds:                 rectFromProto(o.Bounds),
+		PointerEvents:          o.GetPointerEvents(),
+		Visibility:             o.GetVisibility(),
+		Opacity:                o.GetOpacity(),
+		ZIndex:                 o.GetZIndex(),
+		HittableWhileInvisible: o.GetHittableWhileInvisible(),
+	}
+}
+
+// dragResultFromProto splits a DragResult into the res, err shape: the drag
+// payload always, plus a typed *DragError when the source pickup failed. The
+// returned error is nil on success.
+func dragResultFromProto(r *generated.DragResult) (*DragResult, *DragError) {
+	if r == nil {
+		return nil, nil
+	}
+	res := &DragResult{
 		Success:       r.Success,
 		FrameId:       r.FrameId,
 		BackendNodeId: r.BackendNodeId,
@@ -177,6 +308,75 @@ func dragResultFromProto(r *generated.DragResult) *DragResult {
 		EndX:          r.EndX,
 		EndY:          r.EndY,
 	}
+	if r.Success || r.Error == nil {
+		return res, nil
+	}
+	return res, &DragError{
+		Code:       r.Error.Code,
+		Message:    r.Error.Message,
+		ClickError: clickErrorFromProto(r.Error.ClickError),
+	}
+}
+
+// scrollResultFromProto splits a ScrollResult into the res, err shape: the
+// ElementResult payload always (scrollTo returns no root_x/root_y), plus a
+// typed *ScrollError when the target could not be located/scrolled.
+func scrollResultFromProto(r *generated.ScrollResult) (*ElementResult, *ScrollError) {
+	if r == nil {
+		return nil, nil
+	}
+	res := &ElementResult{
+		Success:       r.Success,
+		FrameId:       r.FrameId,
+		BackendNodeId: r.BackendNodeId,
+		IsVisible:     r.IsVisible,
+		Bounds:        rectFromProto(r.Bounds),
+	}
+	if r.Success || r.Error == nil {
+		return res, nil
+	}
+	return res, &ScrollError{Code: r.Error.Code, Message: r.Error.Message}
+}
+
+// moveResultFromProto splits a MoveResult into the res, err shape: the
+// ElementResult payload always, plus a typed *MoveError when the target could
+// not be located.
+func moveResultFromProto(r *generated.MoveResult) (*ElementResult, *MoveError) {
+	if r == nil {
+		return nil, nil
+	}
+	res := &ElementResult{
+		Success:       r.Success,
+		FrameId:       r.FrameId,
+		BackendNodeId: r.BackendNodeId,
+		IsVisible:     r.IsVisible,
+		Bounds:        rectFromProto(r.Bounds),
+		RootX:         r.RootX,
+		RootY:         r.RootY,
+	}
+	if r.Success || r.Error == nil {
+		return res, nil
+	}
+	return res, &MoveError{Code: r.Error.Code, Message: r.Error.Message}
+}
+
+// selectOptionResultFromProto splits a SelectOptionResult into the res, err
+// shape: the selection payload always, plus a typed *SelectOptionError when no
+// option was selected.
+func selectOptionResultFromProto(r *generated.SelectOptionResult) (*SelectOptionResult, *SelectOptionError) {
+	if r == nil {
+		return nil, nil
+	}
+	res := &SelectOptionResult{
+		Success:       r.Success,
+		SelectedIndex: r.SelectedIndex,
+		SelectedValue: r.SelectedValue,
+		SelectedText:  r.SelectedText,
+	}
+	if r.Error == nil {
+		return res, nil
+	}
+	return res, &SelectOptionError{Code: r.Error.Code, Message: r.Error.Message}
 }
 
 // ── SDK -> proto ──

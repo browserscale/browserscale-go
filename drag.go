@@ -79,5 +79,11 @@ func (c *CloudBrowser) drag(ctx context.Context, target *Locator, ox, oy, ax, ay
 	if err != nil {
 		return nil, err
 	}
-	return dragResultFromProto(resp), nil
+	// A failed source pickup comes back as success=false with a structured
+	// detail rather than a gRPC error. Surface it through err as a *DragError.
+	res, dragErr := dragResultFromProto(resp)
+	if dragErr != nil {
+		return res, dragErr
+	}
+	return res, nil
 }

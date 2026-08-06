@@ -39,20 +39,32 @@ type FillOpts struct {
 //
 //	and the root-viewport (rootX, rootY) where the element was clicked
 //
+// Fill focuses the field with the same smart click as [CloudBrowser.Click], so
+// if the field could not be focused (not found, or occluded), err is a
+// [*FillError] whose ClickError carries the underlying occlusion detail. The
+// *ElementResult is still returned (with Success=false). Recover the detail
+// with errors.As.
+//
 // @throws INVALID_LOCATOR - target is empty or has multiple targets set
-// @throws ELEMENT_NOT_FOUND - no element matched the locator
-// @throws FRAME_NOT_FOUND - the requested frame does not exist
-// @throws FILL_FAILED - the input could not be filled
 // @throws TIMEOUT - the operation exceeded the server-side timeout
 // @throws PAGE_NOT_ALIVE - the page has been closed
 //
+// @see [FillError] for the focus-failure detail
 // @see [CloudBrowser.FillWith] for clearing existing content or
 //
 //	overriding the target frame
 //
 // @example
 //
-//	_, err := browser.Fill(ctx, browserscale.CSS("input[name=email]"), "user@example.com")
+//	res, err := browser.Fill(ctx, browserscale.CSS("input[name=email]"), "user@example.com")
+//	if err != nil {
+//	    var fe *browserscale.FillError
+//	    if errors.As(err, &fe) && fe.ClickError != nil {
+//	        log.Printf("blocked by %s", fe.ClickError.Occluder.TagName)
+//	    }
+//	    log.Fatal(err)
+//	}
+//	_ = res
 func (c *CloudBrowser) Fill(ctx context.Context, target *Locator, text string) (*ElementResult, error) {
 	return c.fillWith(ctx, target, text, FillOpts{})
 }
@@ -95,5 +107,12 @@ func (c *CloudBrowser) fillWith(ctx context.Context, target *Locator, text strin
 	if err != nil {
 		return nil, err
 	}
-	return elementResultFromProto(resp), nil
+	// A field that could not be focused/typed comes back as success=false with
+	// a structured detail rather than a gRPC error. Surface it through err as a
+	// *FillError so the res, err shape stays identical to the other actions.
+	res, fillErr := fillResultFromProto(resp)
+	if fillErr != nil {
+		return res, fillErr
+	}
+	return res, nil
 }

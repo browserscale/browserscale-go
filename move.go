@@ -45,5 +45,12 @@ func (c *CloudBrowser) MoveTo(ctx context.Context, target *Locator) (*ElementRes
 	if err != nil {
 		return nil, err
 	}
-	return elementResultFromProto(resp), nil
+	// A target that could not be located comes back as success=false with a
+	// structured detail rather than a gRPC error. Surface it through err as a
+	// *MoveError.
+	res, moveErr := moveResultFromProto(resp)
+	if moveErr != nil {
+		return res, moveErr
+	}
+	return res, nil
 }

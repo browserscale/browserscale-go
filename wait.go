@@ -72,21 +72,33 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 //
 //	matched condition's index, frameId, backendNodeId and bounds)
 //
-// @throws UNKNOWN_ERROR - the wait failed (no condition matched within the
+// If no condition matched before the timeout, err is a [*WaitError] carrying
+// the failure code and a per-condition breakdown (Conditions) of why each
+// element never matched — e.g. "found_occluded" with the intercepting element.
+// The *WaitResult is still returned (with Index -1). Recover the detail with
+// errors.As. A malformed call (no conditions, or a condition without a
+// selector/JS expression) returns an ordinary error instead.
 //
-//	timeout, the condition was invalid, or the call lacked any condition)
+// @see [WaitError] for the timeout detail
 //
 // @example
 //
 //	// Wait for either a success banner or a JS condition, max 5s.
-//	_, err := browser.Wait(ctx,
+//	res, err := browser.Wait(ctx,
 //	    browserscale.CSS(".success"),
 //	    browserscale.JS("window.__ready === true"),
 //	    browserscale.Timeout(5000),
 //	)
 //	if err != nil {
+//	    var we *browserscale.WaitError
+//	    if errors.As(err, &we) {
+//	        for _, c := range we.Conditions {
+//	            log.Printf("condition %d: %s", c.Index, c.State)
+//	        }
+//	    }
 //	    log.Fatal(err)
 //	}
+//	_ = res
 func (c *CloudBrowser) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, error) {
 	wc := &waitCall{timeout: DefaultWaitTimeoutMs}
 	for _, a := range args {
@@ -140,5 +152,12 @@ func (c *CloudBrowser) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, 
 	if err != nil {
 		return nil, err
 	}
-	return waitResultFromProto(resp), nil
+	// A timeout (no condition matched) comes back as index=-1 with a structured
+	// detail rather than a gRPC error. Surface it through err as a *WaitError so
+	// the res, err shape stays identical to the other calls.
+	res, waitErr := waitResultFromProto(resp)
+	if waitErr != nil {
+		return res, waitErr
+	}
+	return res, nil
 }

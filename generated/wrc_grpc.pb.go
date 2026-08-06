@@ -25,6 +25,7 @@ const (
 	Browser_Navigate_FullMethodName           = "/browserscale.v1.Browser/Navigate"
 	Browser_LoadHTML_FullMethodName           = "/browserscale.v1.Browser/LoadHTML"
 	Browser_Evaluate_FullMethodName           = "/browserscale.v1.Browser/Evaluate"
+	Browser_Run_FullMethodName                = "/browserscale.v1.Browser/Run"
 	Browser_WaitForAny_FullMethodName         = "/browserscale.v1.Browser/WaitForAny"
 	Browser_SelectOption_FullMethodName       = "/browserscale.v1.Browser/SelectOption"
 	Browser_ScrollTo_FullMethodName           = "/browserscale.v1.Browser/ScrollTo"
@@ -69,15 +70,16 @@ type BrowserClient interface {
 	LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Evaluation
 	Evaluate(ctx context.Context, in *EvaluateRequest, opts ...grpc.CallOption) (*EvaluateResponse, error)
+	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
 	// Waiting
 	WaitForAny(ctx context.Context, in *WaitForAnyParams, opts ...grpc.CallOption) (*WaitResult, error)
 	// Element actions
 	SelectOption(ctx context.Context, in *SelectOptionRequest, opts ...grpc.CallOption) (*SelectOptionResult, error)
-	ScrollTo(ctx context.Context, in *ScrollToRequest, opts ...grpc.CallOption) (*ElementResult, error)
-	MoveTo(ctx context.Context, in *MoveToRequest, opts ...grpc.CallOption) (*ElementResult, error)
-	Click(ctx context.Context, in *ClickRequest, opts ...grpc.CallOption) (*ElementResult, error)
+	ScrollTo(ctx context.Context, in *ScrollToRequest, opts ...grpc.CallOption) (*ScrollResult, error)
+	MoveTo(ctx context.Context, in *MoveToRequest, opts ...grpc.CallOption) (*MoveResult, error)
+	Click(ctx context.Context, in *ClickRequest, opts ...grpc.CallOption) (*ClickResult, error)
 	Drag(ctx context.Context, in *DragRequest, opts ...grpc.CallOption) (*DragResult, error)
-	Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*ElementResult, error)
+	Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*FillResult, error)
 	// Network interception
 	SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -168,6 +170,16 @@ func (c *browserClient) Evaluate(ctx context.Context, in *EvaluateRequest, opts 
 	return out, nil
 }
 
+func (c *browserClient) Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunResponse)
+	err := c.cc.Invoke(ctx, Browser_Run_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) WaitForAny(ctx context.Context, in *WaitForAnyParams, opts ...grpc.CallOption) (*WaitResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(WaitResult)
@@ -188,9 +200,9 @@ func (c *browserClient) SelectOption(ctx context.Context, in *SelectOptionReques
 	return out, nil
 }
 
-func (c *browserClient) ScrollTo(ctx context.Context, in *ScrollToRequest, opts ...grpc.CallOption) (*ElementResult, error) {
+func (c *browserClient) ScrollTo(ctx context.Context, in *ScrollToRequest, opts ...grpc.CallOption) (*ScrollResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ElementResult)
+	out := new(ScrollResult)
 	err := c.cc.Invoke(ctx, Browser_ScrollTo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -198,9 +210,9 @@ func (c *browserClient) ScrollTo(ctx context.Context, in *ScrollToRequest, opts 
 	return out, nil
 }
 
-func (c *browserClient) MoveTo(ctx context.Context, in *MoveToRequest, opts ...grpc.CallOption) (*ElementResult, error) {
+func (c *browserClient) MoveTo(ctx context.Context, in *MoveToRequest, opts ...grpc.CallOption) (*MoveResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ElementResult)
+	out := new(MoveResult)
 	err := c.cc.Invoke(ctx, Browser_MoveTo_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -208,9 +220,9 @@ func (c *browserClient) MoveTo(ctx context.Context, in *MoveToRequest, opts ...g
 	return out, nil
 }
 
-func (c *browserClient) Click(ctx context.Context, in *ClickRequest, opts ...grpc.CallOption) (*ElementResult, error) {
+func (c *browserClient) Click(ctx context.Context, in *ClickRequest, opts ...grpc.CallOption) (*ClickResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ElementResult)
+	out := new(ClickResult)
 	err := c.cc.Invoke(ctx, Browser_Click_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -228,9 +240,9 @@ func (c *browserClient) Drag(ctx context.Context, in *DragRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *browserClient) Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*ElementResult, error) {
+func (c *browserClient) Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*FillResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ElementResult)
+	out := new(FillResult)
 	err := c.cc.Invoke(ctx, Browser_Fill_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -480,15 +492,16 @@ type BrowserServer interface {
 	LoadHTML(context.Context, *LoadHTMLRequest) (*emptypb.Empty, error)
 	// Evaluation
 	Evaluate(context.Context, *EvaluateRequest) (*EvaluateResponse, error)
+	Run(context.Context, *RunRequest) (*RunResponse, error)
 	// Waiting
 	WaitForAny(context.Context, *WaitForAnyParams) (*WaitResult, error)
 	// Element actions
 	SelectOption(context.Context, *SelectOptionRequest) (*SelectOptionResult, error)
-	ScrollTo(context.Context, *ScrollToRequest) (*ElementResult, error)
-	MoveTo(context.Context, *MoveToRequest) (*ElementResult, error)
-	Click(context.Context, *ClickRequest) (*ElementResult, error)
+	ScrollTo(context.Context, *ScrollToRequest) (*ScrollResult, error)
+	MoveTo(context.Context, *MoveToRequest) (*MoveResult, error)
+	Click(context.Context, *ClickRequest) (*ClickResult, error)
 	Drag(context.Context, *DragRequest) (*DragResult, error)
-	Fill(context.Context, *FillRequest) (*ElementResult, error)
+	Fill(context.Context, *FillRequest) (*FillResult, error)
 	// Network interception
 	SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error)
 	SetStaticPaths(context.Context, *SetStaticPathsRequest) (*emptypb.Empty, error)
@@ -544,25 +557,28 @@ func (UnimplementedBrowserServer) LoadHTML(context.Context, *LoadHTMLRequest) (*
 func (UnimplementedBrowserServer) Evaluate(context.Context, *EvaluateRequest) (*EvaluateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Evaluate not implemented")
 }
+func (UnimplementedBrowserServer) Run(context.Context, *RunRequest) (*RunResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
+}
 func (UnimplementedBrowserServer) WaitForAny(context.Context, *WaitForAnyParams) (*WaitResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WaitForAny not implemented")
 }
 func (UnimplementedBrowserServer) SelectOption(context.Context, *SelectOptionRequest) (*SelectOptionResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SelectOption not implemented")
 }
-func (UnimplementedBrowserServer) ScrollTo(context.Context, *ScrollToRequest) (*ElementResult, error) {
+func (UnimplementedBrowserServer) ScrollTo(context.Context, *ScrollToRequest) (*ScrollResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ScrollTo not implemented")
 }
-func (UnimplementedBrowserServer) MoveTo(context.Context, *MoveToRequest) (*ElementResult, error) {
+func (UnimplementedBrowserServer) MoveTo(context.Context, *MoveToRequest) (*MoveResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MoveTo not implemented")
 }
-func (UnimplementedBrowserServer) Click(context.Context, *ClickRequest) (*ElementResult, error) {
+func (UnimplementedBrowserServer) Click(context.Context, *ClickRequest) (*ClickResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Click not implemented")
 }
 func (UnimplementedBrowserServer) Drag(context.Context, *DragRequest) (*DragResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Drag not implemented")
 }
-func (UnimplementedBrowserServer) Fill(context.Context, *FillRequest) (*ElementResult, error) {
+func (UnimplementedBrowserServer) Fill(context.Context, *FillRequest) (*FillResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fill not implemented")
 }
 func (UnimplementedBrowserServer) SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error) {
@@ -741,6 +757,24 @@ func _Browser_Evaluate_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BrowserServer).Evaluate(ctx, req.(*EvaluateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_Run_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).Run(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_Run_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).Run(ctx, req.(*RunRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1311,6 +1345,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Evaluate",
 			Handler:    _Browser_Evaluate_Handler,
+		},
+		{
+			MethodName: "Run",
+			Handler:    _Browser_Run_Handler,
 		},
 		{
 			MethodName: "WaitForAny",

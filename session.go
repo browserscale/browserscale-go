@@ -156,6 +156,26 @@ func (c *CloudBrowser) Close() error {
 	return c.StopBrowser(context.Background())
 }
 
+// CloseConn closes only the gRPC connection, leaving the server-side session
+// running.
+//
+// Use this to detach without releasing the rental — the common case when you
+// attached with [ConnectSession] to act on a session owned elsewhere, or when a
+// short-lived handle should not outlive its work but the session must. Contrast
+// with [CloudBrowser.Close] / [CloudBrowser.StopBrowser], which also release the
+// rental via the stop endpoint.
+//
+// @throws UNKNOWN_ERROR - the gRPC connection could not be closed
+//
+// @example
+//
+//	browser, err := browserscale.ConnectSession(ctx, grpcUrl, apiKey, sessionId)
+//	if err != nil { log.Fatal(err) }
+//	defer browser.CloseConn() // detach; the session keeps running
+func (c *CloudBrowser) CloseConn() error {
+	return c.conn.Close()
+}
+
 // StopBrowser releases a session without needing a [CloudBrowser] handle.
 //
 // Useful when a session id was persisted across processes and the rental

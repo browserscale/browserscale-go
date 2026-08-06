@@ -42,21 +42,31 @@ type ClickOpts struct {
 //	post-scroll isVisible, element bounds and the root-viewport (rootX, rootY)
 //	where the click landed
 //
+// If the target was found but the click could not land because another element
+// covered it, err is a [*ClickError] carrying the failure code and the
+// intercepting element (Occluder). The *ElementResult is still returned (with
+// Success=false) so callers can read the resolved coordinates. Recover the
+// detail with errors.As.
+//
 // @throws INVALID_LOCATOR - target is empty or has multiple targets set
 // @throws ELEMENT_NOT_FOUND - no element matched the locator
 // @throws FRAME_NOT_FOUND - the requested frame does not exist
-// @throws CLICK_FAILED - the click could not be dispatched
 // @throws TIMEOUT - the operation exceeded the server-side timeout
 // @throws PAGE_NOT_ALIVE - the page has been closed
 //
+// @see [ClickError] for the occlusion-failure detail
 // @see [CloudBrowser.ClickWith] for right-click, double-click,
 //
 //	press/release-only, or frame override
 //
 // @example
 //
-//	_, err := browser.Click(ctx, browserscale.CSS("button.submit"))
+//	res, err := browser.Click(ctx, browserscale.CSS("button.submit"))
 //	if err != nil {
+//	    var ce *browserscale.ClickError
+//	    if errors.As(err, &ce) {
+//	        log.Printf("blocked by %s (%s)", ce.Occluder.TagName, ce.Code)
+//	    }
 //	    log.Fatal(err)
 //	}
 func (c *CloudBrowser) Click(ctx context.Context, target *Locator) (*ElementResult, error) {
@@ -100,5 +110,12 @@ func (c *CloudBrowser) clickWith(ctx context.Context, target *Locator, o ClickOp
 	if err != nil {
 		return nil, err
 	}
-	return elementResultFromProto(resp), nil
+	// A click that did not land comes back as success=false with a structured
+	// detail rather than a gRPC error. Surface it through err as a *ClickError
+	// so the res, err shape stays identical to the other actions.
+	res, clickErr := clickResultFromProto(resp)
+	if clickErr != nil {
+		return res, clickErr
+	}
+	return res, nil
 }

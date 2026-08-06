@@ -166,9 +166,12 @@ func (c *CloudBrowser) runSelect(ctx context.Context, target *Locator, o SelectO
 	if err != nil {
 		return nil, err
 	}
-	return &SelectOptionResult{
-		SelectedIndex: resp.SelectedIndex,
-		SelectedValue: resp.SelectedValue,
-		SelectedText:  resp.SelectedText,
-	}, nil
+	// A select that matched nothing comes back as success=false with a
+	// structured detail rather than a gRPC error. Surface it through err as a
+	// *SelectOptionError.
+	res, selErr := selectOptionResultFromProto(resp)
+	if selErr != nil {
+		return res, selErr
+	}
+	return res, nil
 }

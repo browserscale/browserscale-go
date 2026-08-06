@@ -45,5 +45,12 @@ func (c *CloudBrowser) ScrollTo(ctx context.Context, target *Locator) (*ElementR
 	if err != nil {
 		return nil, err
 	}
-	return elementResultFromProto(resp), nil
+	// A target that could not be located/scrolled comes back as success=false
+	// with a structured detail rather than a gRPC error. Surface it through err
+	// as a *ScrollError.
+	res, scrollErr := scrollResultFromProto(resp)
+	if scrollErr != nil {
+		return res, scrollErr
+	}
+	return res, nil
 }
