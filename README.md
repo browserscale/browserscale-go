@@ -1,9 +1,20 @@
-# browserscale-go — browserscale SDK for Go
+<div align="center">
 
-Official Go SDK for [browserscale](https://browserscale.cloud): real Chromium
-browsers in the cloud, driven over gRPC. Rent an isolated browser session in
-seconds, automate it with human-like input, intercept network traffic, solve
-captchas, and watch a live video stream of everything your script does.
+# browserscale-go
+
+**The official Go SDK for [browserscale](https://browserscale.cloud) — real Chromium browsers in the cloud, driven over gRPC.**
+
+Rent an isolated browser session in seconds, automate it with human-like input, intercept network traffic, solve captchas, and watch a live video stream of everything your script does.
+
+[![Go Reference](https://pkg.go.dev/badge/github.com/browserscale/browserscale-go.svg)](https://pkg.go.dev/github.com/browserscale/browserscale-go)
+![Go](https://img.shields.io/badge/go-1.22%2B-00ADD8?logo=go&logoColor=white)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue)
+
+[Install](#install) · [Quickstart](#quickstart) · [Core API](#core-api) · [Docs](#documentation) · [Ecosystem](#ecosystem)
+
+</div>
+
+---
 
 ## Features
 
@@ -62,7 +73,7 @@ captchas, and watch a live video stream of everything your script does.
 go get github.com/browserscale/browserscale-go
 ```
 
-Requires Go 1.22+. The gRPC stubs ship precompiled — no `protoc` needed.
+Requires **Go 1.22+**. The gRPC stubs ship precompiled — no `protoc` needed.
 
 ## Quickstart
 
@@ -112,6 +123,30 @@ func main() {
 Run it and you should see `title: Example Domain`. Get an API key from your
 [dashboard](https://browserscale.cloud/dashboard/api-keys).
 
+## Core API
+
+Every action method is context-first and returns an explicit error. Methods come
+in `Method` / `MethodWith` pairs — the plain form for the common case, the
+`…With` form for an options struct.
+
+| Method | What it does |
+| --- | --- |
+| `RentBrowser(ctx, cfg)` | Rent a fresh session (`NewBrowserConfig(key, secs, host, port, user, pass)`). |
+| `ConnectSession(ctx, grpcURL, key, id)` | Attach to an existing session by id (from a prior rent). |
+| `Navigate(ctx, url, timeoutMs)` | Load a URL (`0` = default timeout). |
+| `Wait(ctx, locators…, opts…)` | Race one or more conditions; returns the matched index + `frameId`. |
+| `Click(ctx, locator, opts…)` | Human-like click; rich `ClickError` (incl. the occluding element) on failure. |
+| `FillWith(ctx, locator, text, FillOpts{})` | Per-key typing that fires real input events; `InsertText` for bulk commit. |
+| `Evaluate(ctx, expr)` | Run JS in the page/frame and get a typed value back. |
+| `GetObservation(ctx, …)` | Compact, node-handle-tagged view of interactive elements across frames. |
+| `SolveCaptcha(ctx, …)` | Solve an interactive challenge in the live browser. |
+| `Close()` / `StopBrowser()` | Release the rental. `CloseConn()` detaches without releasing it. |
+
+Locators: `CSS(...)`, `JS(...)` (target by page logic when CSS can't). Plus
+cookies (`GetCookies`/`SetCookies`/`ClearCookies`), storage, network
+interception, `MoveTo`/`ScrollTo`/`Drag`/`Select`/`PressKey`, and `ReadCanvas` —
+see the full reference below.
+
 ## Documentation
 
 - [Introduction](https://browserscale.cloud/docs) — what browserscale is, use cases and
@@ -129,10 +164,14 @@ Run it and you should see `title: Example Domain`. Get an API key from your
 
 A runnable example lives in [`examples/simple`](examples/simple).
 
-## TypeScript
+## Ecosystem
 
-Prefer Node.js or the browser? Use the TypeScript SDK:
-[browserscale-ts](https://github.com/browserscale/browserscale-ts).
+| Project | Role |
+| --- | --- |
+| **browserscale-go** (you are here) | The Go SDK. |
+| [**browserscale-ts**](https://github.com/browserscale/browserscale-ts) | The TypeScript SDK (Node.js + browser). |
+| [**browserscale-cli**](https://github.com/browserscale/browserscale-cli) | `browserscale init` — scaffold a runnable automation module. |
+| [**browserscale-kit**](https://github.com/browserscale/browserscale-kit) | Go toolkit around the browser: config, store, queues, proxies, logging, mail. |
 
 ## License
 
