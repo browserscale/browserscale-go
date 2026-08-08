@@ -141,6 +141,46 @@ func (c *CloudBrowser) InsertText(ctx context.Context, text string) error {
 	return err
 }
 
+// Type types text into the currently focused element as a per-key stream of
+// real keyboard events (keyDown/char/keyUp with the context's QWERTZ/QWERTY
+// layout and human cadence) — unlike [CloudBrowser.InsertText], a single
+// IME-style commit with no key events.
+//
+// Type is intentionally UNtargeted and loose: it does not locate or focus any
+// element and does NOT pin focus, so the page is free to route keys and move
+// focus between fields mid-stream — ideal for one-time-code / OTP inputs that
+// auto-advance to the next box on each digit. To type one specific field that
+// must stay focused for the whole value, use [CloudBrowser.Fill] instead
+// (strict, target-bound, per-key focus-verified).
+//
+// Nothing is focused for you: [CloudBrowser.Click] (or Fill) the field first,
+// or otherwise ensure focus, before calling Type.
+//
+// @param text - the text to type as real key events
+// @param clearFirst - when true, clears the focused field (Ctrl+A, Delete) first
+//
+// @throws UNKNOWN_ERROR - the page/context was torn down mid-stream
+//
+// @example
+//
+//	// OTP field that auto-advances across boxes.
+//	_, _ = browser.Click(ctx, browserscale.CSS("input.otp-0"))
+//	if err := browser.Type(ctx, "123456", false); err != nil {
+//	    log.Fatal(err)
+//	}
+func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) error {
+	req := &generated.TypeRequest{
+		SessionId: c.sessionId, ApiKey: c.apiKey,
+		Text: text,
+	}
+	if clearFirst {
+		t := true
+		req.ClearFirst = &t
+	}
+	_, err := c.client.Type(ctx, req)
+	return err
+}
+
 // PressKey fires a single key-down event.
 //
 // Only the keydown half is dispatched — pair with [CloudBrowser.ReleaseKey]

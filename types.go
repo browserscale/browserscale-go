@@ -242,14 +242,54 @@ func (e *ClickError) Error() string {
 //	    // fe.ClickError.Occluder describes the blocker
 //	}
 type FillError struct {
-	// Code is mirrored from the underlying click failure: "not_found",
-	// "occluded_no_reachable_point" or "occluded_after_evade".
+	// Code is the machine-stable failure code. Click-phase codes ("not_found",
+	// "occluded_no_reachable_point", "occluded_after_evade") mirror the
+	// underlying focus click, with diagnostics under ClickError. The focus codes
+	// are "focus_stolen" (another element took focus — FocusedElement names it;
+	// Fill is strictly target-bound and will not type into the thief) and
+	// "focus_lost" (focus left the target and nothing is focused). For
+	// untargeted stream typing that lets focus move (e.g. OTP), use Type.
 	Code string
 	// Message is a human-readable description (mirrors ClickError.Message).
 	Message string
 	// ClickError is the underlying click-core failure (locate or occlusion)
-	// that prevented focusing/typing. Present whenever the fill failed.
+	// that prevented focusing/typing. Present for the click-phase codes; absent
+	// for "focus_stolen"/"focus_lost".
 	ClickError *ClickError
+	// FocusedBackendNodeId is the node that held focus when Fill gave up (0 if
+	// nothing was focused), for the "focus_stolen"/"focus_lost" codes.
+	FocusedBackendNodeId int32
+	// FocusedElement describes the element that grabbed focus instead of the
+	// target ("focus_stolen"), so you can act on it (e.g. a consent button).
+	FocusedElement *ElementRef
+	// TargetEditable and TargetValueLength report the fill target's own state at
+	// the point of failure (the focus codes): whether it is still an editable
+	// text sink and its current text length. Both nil when not reported.
+	TargetEditable    *bool
+	TargetValueLength *int
+}
+
+// ElementRef is a lightweight descriptor of an element — enough to identify it
+// (and decide what to do) without another DOM round-trip. It names the element
+// that stole focus in a [FillError] focus-loss failure.
+type ElementRef struct {
+	// BackendNodeId is the element's stable backend node id.
+	BackendNodeId int32
+	// TagName is the upper-case tag name, e.g. "INPUT", "BUTTON", "DIV".
+	TagName string
+	// Id is the id attribute, if present.
+	Id string
+	// Name is the name attribute, if present.
+	Name string
+	// ClassName is the class attribute, if present.
+	ClassName string
+	// InputType is the <input> type, if the element is an <input>.
+	InputType string
+	// Text is a whitespace-collapsed textContent/value snippet (max 120 chars).
+	Text string
+	// Editable is true when the element is itself an editable text sink
+	// (input / textarea / contenteditable).
+	Editable bool
 }
 
 // Error implements the error interface.

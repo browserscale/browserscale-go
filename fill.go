@@ -18,6 +18,17 @@ type FillOpts struct {
 	// Ctrl+A, Delete before typing. Default (false) appends to whatever
 	// is already there.
 	ClearFirst bool
+
+	// TimeoutMs bounds focus acquisition (locate, scroll, settle, un-occlude)
+	// in ms, mirroring the click timeout. nil = server default (5000). It is a
+	// pointer because 0 is meaningful: browserscale.Ptr(0.0) makes Fill
+	// one-shot (no retry).
+	TimeoutMs *float64
+
+	// SteadyMs is the settle window in ms before the focus click, mirroring the
+	// click steady-time. nil = server default (750); browserscale.Ptr(0.0)
+	// skips settling.
+	SteadyMs *float64
 }
 
 // Fill clicks the target and types text into it, appending to any
@@ -102,6 +113,8 @@ func (c *CloudBrowser) fillWith(ctx context.Context, target *Locator, text strin
 		t := true
 		req.ClearFirst = &t
 	}
+	req.Timeout = o.TimeoutMs
+	req.SteadyTime = o.SteadyMs
 
 	resp, err := c.client.Fill(ctx, req)
 	if err != nil {

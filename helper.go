@@ -265,10 +265,37 @@ func fillErrorFromProto(e *generated.FillError) *FillError {
 	if e == nil {
 		return nil
 	}
-	return &FillError{
-		Code:       e.Code,
-		Message:    e.Message,
-		ClickError: clickErrorFromProto(e.ClickError),
+	fe := &FillError{
+		Code:                 e.Code,
+		Message:              e.Message,
+		ClickError:           clickErrorFromProto(e.ClickError),
+		FocusedBackendNodeId: e.GetFocusedBackendNodeId(),
+		FocusedElement:       elementRefFromProto(e.FocusedElement),
+	}
+	if e.TargetEditable != nil {
+		v := e.GetTargetEditable()
+		fe.TargetEditable = &v
+	}
+	if e.TargetValueLength != nil {
+		v := int(e.GetTargetValueLength())
+		fe.TargetValueLength = &v
+	}
+	return fe
+}
+
+func elementRefFromProto(e *generated.ElementRef) *ElementRef {
+	if e == nil {
+		return nil
+	}
+	return &ElementRef{
+		BackendNodeId: e.BackendNodeId,
+		TagName:       e.TagName,
+		Id:            e.GetId(),
+		Name:          e.GetName(),
+		ClassName:     e.GetClassName(),
+		InputType:     e.GetInputType(),
+		Text:          e.GetText(),
+		Editable:      e.Editable,
 	}
 }
 
@@ -501,3 +528,9 @@ func floatPtrIfNonZero(v float64) *float64 {
 	}
 	return &v
 }
+
+// Ptr returns a pointer to v. It is a convenience for the SDK's optional
+// pointer fields where a zero value is meaningful and must be distinguished
+// from "unset" — e.g. [FillOpts.TimeoutMs]: browserscale.Ptr(0.0) makes Fill
+// one-shot, whereas a nil field takes the server default.
+func Ptr[T any](v T) *T { return &v }

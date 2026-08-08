@@ -33,6 +33,9 @@ const (
 	Browser_Click_FullMethodName              = "/browserscale.v1.Browser/Click"
 	Browser_Drag_FullMethodName               = "/browserscale.v1.Browser/Drag"
 	Browser_Fill_FullMethodName               = "/browserscale.v1.Browser/Fill"
+	Browser_AddReaction_FullMethodName        = "/browserscale.v1.Browser/AddReaction"
+	Browser_RemoveReaction_FullMethodName     = "/browserscale.v1.Browser/RemoveReaction"
+	Browser_ListReactions_FullMethodName      = "/browserscale.v1.Browser/ListReactions"
 	Browser_SetBlockList_FullMethodName       = "/browserscale.v1.Browser/SetBlockList"
 	Browser_SetStaticPaths_FullMethodName     = "/browserscale.v1.Browser/SetStaticPaths"
 	Browser_WaitForAnyRequest_FullMethodName  = "/browserscale.v1.Browser/WaitForAnyRequest"
@@ -52,10 +55,14 @@ const (
 	Browser_Screenshot_FullMethodName         = "/browserscale.v1.Browser/Screenshot"
 	Browser_ReadCanvas_FullMethodName         = "/browserscale.v1.Browser/ReadCanvas"
 	Browser_InsertText_FullMethodName         = "/browserscale.v1.Browser/InsertText"
+	Browser_Type_FullMethodName               = "/browserscale.v1.Browser/Type"
 	Browser_PressKey_FullMethodName           = "/browserscale.v1.Browser/PressKey"
 	Browser_ReleaseKey_FullMethodName         = "/browserscale.v1.Browser/ReleaseKey"
 	Browser_GetSelection_FullMethodName       = "/browserscale.v1.Browser/GetSelection"
 	Browser_SolveCaptcha_FullMethodName       = "/browserscale.v1.Browser/SolveCaptcha"
+	Browser_GetStreamConfig_FullMethodName    = "/browserscale.v1.Browser/GetStreamConfig"
+	Browser_StartStream_FullMethodName        = "/browserscale.v1.Browser/StartStream"
+	Browser_StopStream_FullMethodName         = "/browserscale.v1.Browser/StopStream"
 )
 
 // BrowserClient is the client API for Browser service.
@@ -80,6 +87,12 @@ type BrowserClient interface {
 	Click(ctx context.Context, in *ClickRequest, opts ...grpc.CallOption) (*ClickResult, error)
 	Drag(ctx context.Context, in *DragRequest, opts ...grpc.CallOption) (*DragResult, error)
 	Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*FillResult, error)
+	// Reactions — one-shot background auto-click when a condition matches. A
+	// shared per-page poller fires only while the pointer is idle, so a reaction
+	// slots into the gaps of a retrying foreground action.
+	AddReaction(ctx context.Context, in *AddReactionRequest, opts ...grpc.CallOption) (*AddReactionResponse, error)
+	RemoveReaction(ctx context.Context, in *RemoveReactionRequest, opts ...grpc.CallOption) (*RemoveReactionResponse, error)
+	ListReactions(ctx context.Context, in *ListReactionsRequest, opts ...grpc.CallOption) (*ListReactionsResponse, error)
 	// Network interception
 	SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -105,11 +118,20 @@ type BrowserClient interface {
 	ReadCanvas(ctx context.Context, in *ReadCanvasRequest, opts ...grpc.CallOption) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
 	InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReleaseKey(ctx context.Context, in *ReleaseKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetSelection(ctx context.Context, in *GetSelectionRequest, opts ...grpc.CallOption) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(ctx context.Context, in *SolveCaptchaRequest, opts ...grpc.CallOption) (*SolveCaptchaResponse, error)
+	// Live streaming (WebRTC). The page is streamed as a video track over a
+	// WebRTC PeerConnection whose media is relayed through the TURN server. The
+	// caller creates the offer (client-offerer); the browser answers it.
+	// GetStreamConfig first hands out the ICE servers the client needs to build
+	// that offer.
+	GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error)
+	StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*StartStreamResponse, error)
+	StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*StopStreamResponse, error)
 }
 
 type browserClient struct {
@@ -244,6 +266,36 @@ func (c *browserClient) Fill(ctx context.Context, in *FillRequest, opts ...grpc.
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(FillResult)
 	err := c.cc.Invoke(ctx, Browser_Fill_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) AddReaction(ctx context.Context, in *AddReactionRequest, opts ...grpc.CallOption) (*AddReactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddReactionResponse)
+	err := c.cc.Invoke(ctx, Browser_AddReaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) RemoveReaction(ctx context.Context, in *RemoveReactionRequest, opts ...grpc.CallOption) (*RemoveReactionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RemoveReactionResponse)
+	err := c.cc.Invoke(ctx, Browser_RemoveReaction_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) ListReactions(ctx context.Context, in *ListReactionsRequest, opts ...grpc.CallOption) (*ListReactionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListReactionsResponse)
+	err := c.cc.Invoke(ctx, Browser_ListReactions_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -440,6 +492,16 @@ func (c *browserClient) InsertText(ctx context.Context, in *InsertTextRequest, o
 	return out, nil
 }
 
+func (c *browserClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Browser_Type_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -480,6 +542,36 @@ func (c *browserClient) SolveCaptcha(ctx context.Context, in *SolveCaptchaReques
 	return out, nil
 }
 
+func (c *browserClient) GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStreamConfigResponse)
+	err := c.cc.Invoke(ctx, Browser_GetStreamConfig_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*StartStreamResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartStreamResponse)
+	err := c.cc.Invoke(ctx, Browser_StartStream_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*StopStreamResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StopStreamResponse)
+	err := c.cc.Invoke(ctx, Browser_StopStream_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // BrowserServer is the server API for Browser service.
 // All implementations must embed UnimplementedBrowserServer
 // for forward compatibility.
@@ -502,6 +594,12 @@ type BrowserServer interface {
 	Click(context.Context, *ClickRequest) (*ClickResult, error)
 	Drag(context.Context, *DragRequest) (*DragResult, error)
 	Fill(context.Context, *FillRequest) (*FillResult, error)
+	// Reactions — one-shot background auto-click when a condition matches. A
+	// shared per-page poller fires only while the pointer is idle, so a reaction
+	// slots into the gaps of a retrying foreground action.
+	AddReaction(context.Context, *AddReactionRequest) (*AddReactionResponse, error)
+	RemoveReaction(context.Context, *RemoveReactionRequest) (*RemoveReactionResponse, error)
+	ListReactions(context.Context, *ListReactionsRequest) (*ListReactionsResponse, error)
 	// Network interception
 	SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error)
 	SetStaticPaths(context.Context, *SetStaticPathsRequest) (*emptypb.Empty, error)
@@ -527,11 +625,20 @@ type BrowserServer interface {
 	ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
 	InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error)
+	Type(context.Context, *TypeRequest) (*emptypb.Empty, error)
 	PressKey(context.Context, *PressKeyRequest) (*emptypb.Empty, error)
 	ReleaseKey(context.Context, *ReleaseKeyRequest) (*emptypb.Empty, error)
 	GetSelection(context.Context, *GetSelectionRequest) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(context.Context, *SolveCaptchaRequest) (*SolveCaptchaResponse, error)
+	// Live streaming (WebRTC). The page is streamed as a video track over a
+	// WebRTC PeerConnection whose media is relayed through the TURN server. The
+	// caller creates the offer (client-offerer); the browser answers it.
+	// GetStreamConfig first hands out the ICE servers the client needs to build
+	// that offer.
+	GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error)
+	StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error)
+	StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error)
 	mustEmbedUnimplementedBrowserServer()
 }
 
@@ -580,6 +687,15 @@ func (UnimplementedBrowserServer) Drag(context.Context, *DragRequest) (*DragResu
 }
 func (UnimplementedBrowserServer) Fill(context.Context, *FillRequest) (*FillResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Fill not implemented")
+}
+func (UnimplementedBrowserServer) AddReaction(context.Context, *AddReactionRequest) (*AddReactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AddReaction not implemented")
+}
+func (UnimplementedBrowserServer) RemoveReaction(context.Context, *RemoveReactionRequest) (*RemoveReactionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RemoveReaction not implemented")
+}
+func (UnimplementedBrowserServer) ListReactions(context.Context, *ListReactionsRequest) (*ListReactionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListReactions not implemented")
 }
 func (UnimplementedBrowserServer) SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetBlockList not implemented")
@@ -638,6 +754,9 @@ func (UnimplementedBrowserServer) ReadCanvas(context.Context, *ReadCanvasRequest
 func (UnimplementedBrowserServer) InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InsertText not implemented")
 }
+func (UnimplementedBrowserServer) Type(context.Context, *TypeRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Type not implemented")
+}
 func (UnimplementedBrowserServer) PressKey(context.Context, *PressKeyRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PressKey not implemented")
 }
@@ -649,6 +768,15 @@ func (UnimplementedBrowserServer) GetSelection(context.Context, *GetSelectionReq
 }
 func (UnimplementedBrowserServer) SolveCaptcha(context.Context, *SolveCaptchaRequest) (*SolveCaptchaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SolveCaptcha not implemented")
+}
+func (UnimplementedBrowserServer) GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetStreamConfig not implemented")
+}
+func (UnimplementedBrowserServer) StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartStream not implemented")
+}
+func (UnimplementedBrowserServer) StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopStream not implemented")
 }
 func (UnimplementedBrowserServer) mustEmbedUnimplementedBrowserServer() {}
 func (UnimplementedBrowserServer) testEmbeddedByValue()                 {}
@@ -901,6 +1029,60 @@ func _Browser_Fill_Handler(srv interface{}, ctx context.Context, dec func(interf
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BrowserServer).Fill(ctx, req.(*FillRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_AddReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddReactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).AddReaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_AddReaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).AddReaction(ctx, req.(*AddReactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_RemoveReaction_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveReactionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).RemoveReaction(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_RemoveReaction_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).RemoveReaction(ctx, req.(*RemoveReactionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_ListReactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListReactionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).ListReactions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_ListReactions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).ListReactions(ctx, req.(*ListReactionsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1247,6 +1429,24 @@ func _Browser_InsertText_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_Type_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TypeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).Type(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_Type_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).Type(ctx, req.(*TypeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Browser_PressKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PressKeyRequest)
 	if err := dec(in); err != nil {
@@ -1319,6 +1519,60 @@ func _Browser_SolveCaptcha_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_GetStreamConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStreamConfigRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetStreamConfig(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetStreamConfig_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetStreamConfig(ctx, req.(*GetStreamConfigRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StartStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartStreamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StartStream(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StartStream_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StartStream(ctx, req.(*StartStreamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StopStream_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopStreamRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StopStream(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StopStream_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StopStream(ctx, req.(*StopStreamRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Browser_ServiceDesc is the grpc.ServiceDesc for Browser service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -1377,6 +1631,18 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Fill",
 			Handler:    _Browser_Fill_Handler,
+		},
+		{
+			MethodName: "AddReaction",
+			Handler:    _Browser_AddReaction_Handler,
+		},
+		{
+			MethodName: "RemoveReaction",
+			Handler:    _Browser_RemoveReaction_Handler,
+		},
+		{
+			MethodName: "ListReactions",
+			Handler:    _Browser_ListReactions_Handler,
 		},
 		{
 			MethodName: "SetBlockList",
@@ -1455,6 +1721,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Browser_InsertText_Handler,
 		},
 		{
+			MethodName: "Type",
+			Handler:    _Browser_Type_Handler,
+		},
+		{
 			MethodName: "PressKey",
 			Handler:    _Browser_PressKey_Handler,
 		},
@@ -1469,6 +1739,18 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SolveCaptcha",
 			Handler:    _Browser_SolveCaptcha_Handler,
+		},
+		{
+			MethodName: "GetStreamConfig",
+			Handler:    _Browser_GetStreamConfig_Handler,
+		},
+		{
+			MethodName: "StartStream",
+			Handler:    _Browser_StartStream_Handler,
+		},
+		{
+			MethodName: "StopStream",
+			Handler:    _Browser_StopStream_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
