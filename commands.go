@@ -276,45 +276,90 @@ func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) 
 	return resp.Dom, nil
 }
 
-// GetObservation returns a compact, agent-friendly description of every
-// interactable element currently visible on the page, together with a
-// truncated view of the surrounding text.
+// GetObservation returns a compact, frame-aware view of the visible page —
+// the first thing to reach for on an unfamiliar page, and the cheapest way to
+// re-read the current state afterwards.
 //
-// The result is intended as input for LLM/agent loops where a full DOM
-// dump would be too large; the server filters down to elements that are
-// actually visible and interactable.
+// Each frame opens with header lines carrying the URL, the title and the
+// scroll position, then one line per visible element:
 //
-// @param maxElementsPerFrame - hard cap on how many elements the server
+//	input#email[47] type="email" name="loginId" value="a@b.com" required click "E-Mail"
 //
-//	returns per frame; 0 means use the server default
+// It spans every frame, pierces open and closed shadow roots, enumerates
+// <select> options, and reports live form state: value= is what is typed in
+// right now (passwords as a length), checked= for boxes. The trailing quoted
+// string is always the label or text, never the value, so an empty and a
+// prefilled field stay distinguishable. Because the headers already carry URL,
+// title and scroll offset, this replaces the usual handful of [CloudBrowser.Evaluate]
+// probes after each step.
 //
-// @param maxTextLength - hard cap on per-element text content length in
+// On what to do with the result: backendNodeId (the 47 above) is a handle for
+// this session and can be passed straight to click/fill via [Node]. It does not
+// survive a new document, so for anything you write into a script, target with
+// [CSS] or [JS] instead — those calls return the backendNodeId they resolved to,
+// which lets you confirm the durable anchor hits the element you saw.
 //
-//	characters; 0 means use the server default
-//
-// @returns *ObservationResult with both a human-readable Text rendering
-//
-//	and a Json payload of the structured observation
+// @returns the observation in the requested format, ready to hand to a model
 //
 // @throws UNKNOWN_ERROR - the observation could not be produced
 //
 // @example
 //
-//	obs, err := browser.GetObservation(ctx, 200, 80)
+//	obs, err := browser.GetObservation(ctx)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-//	fmt.Println(obs.Text)
-func (c *CloudBrowser) GetObservation(ctx context.Context, maxElementsPerFrame, maxTextLength int32) (*ObservationResult, error) {
-	resp, err := c.client.GetObservation(ctx, &generated.GetObservationRequest{
+//	fmt.Println(obs)
+func (c *CloudBrowser) GetObservation(ctx context.Context) (string, error) {
+	return c.getObservation(ctx, ObservationOpts{})
+}
+
+// GetObservationWith is the customizable variant of [CloudBrowser.GetObservation].
+//
+// @inheritDoc [CloudBrowser.GetObservation]
+// @param opts - observation customization; see [ObservationOpts]
+//
+// @example
+//
+//	// Only what is on screen right now, as structured JSON.
+//	obs, err := browser.GetObservationWith(ctx, browserscale.ObservationOpts{
+//	    Format:       "json",
+//	    ViewportOnly: true,
+//	})
+//
+//	// Re-read just one form after the first full look.
+//	obs, err = browser.GetObservationWith(ctx, browserscale.ObservationOpts{
+//	    Selector: "form#register",
+//	})
+func (c *CloudBrowser) GetObservationWith(ctx context.Context, opts ObservationOpts) (string, error) {
+	return c.getObservation(ctx, opts)
+}
+
+func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (string, error) {
+	req := &generated.GetObservationRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
-		MaxElementsPerFrame: intPtr(maxElementsPerFrame),
-		MaxTextLength:       intPtr(maxTextLength),
-	})
-	if err != nil {
-		return nil, err
+		MaxElementsPerFrame: intPtr(o.MaxElementsPerFrame),
+		MaxTextLength:       intPtr(o.MaxTextLength),
+		MaxTotalTokens:      intPtr(o.MaxTotalTokens),
+		BackendNodeId:       intPtr(o.BackendNodeId),
+		Selector:            strPtr(o.Selector),
+		JsExpression:        strPtr(o.JSExpression),
+		FrameId:             strPtr(o.InFrame),
 	}
-	return &ObservationResult{Text: resp.ObservationText, Json: resp.ObservationJson}, nil
+	if o.Format != "" {
+		req.Format = strPtr(o.Format)
+	}
+	if o.IncludeBounds {
+		req.IncludeBounds = Ptr(true)
+	}
+	if o.ViewportOnly {
+		req.ViewportOnly = Ptr(true)
+	}
+	resp, err := c.client.GetObservation(ctx, req)
+	if err != nil {
+		return "", err
+	}
+	return resp.Observation, nil
 }
 
 // ── Screenshot ──

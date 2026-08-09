@@ -1184,8 +1184,13 @@ type OccluderInfo struct {
 	// swallowed even at visibility:hidden / opacity:0. When false and invisible,
 	// a real click would fall through.
 	HittableWhileInvisible *bool `protobuf:"varint,12,opt,name=hittable_while_invisible,json=hittableWhileInvisible,proto3,oneof" json:"hittable_while_invisible,omitempty"`
-	unknownFields          protoimpl.UnknownFields
-	sizeCache              protoimpl.SizeCache
+	// Computed position keyword. Reports "fixed"/"sticky" when the element is
+	// pinned by itself or by an ancestor — pinned blockers stay put no matter
+	// where the pointer goes and can only be cleared by scrolling the target out
+	// from under them; ordinary overlays often collapse once the pointer leaves.
+	Position      *string `protobuf:"bytes,13,opt,name=position,proto3,oneof" json:"position,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *OccluderInfo) Reset() {
@@ -1300,6 +1305,13 @@ func (x *OccluderInfo) GetHittableWhileInvisible() bool {
 		return *x.HittableWhileInvisible
 	}
 	return false
+}
+
+func (x *OccluderInfo) GetPosition() string {
+	if x != nil && x.Position != nil {
+		return *x.Position
+	}
+	return ""
 }
 
 // Error detail for a Click that did not land. Present in ClickResult iff
@@ -5572,10 +5584,35 @@ type GetObservationRequest struct {
 	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	ApiKey    string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
 	PageId    string                 `protobuf:"bytes,3,opt,name=page_id,json=pageId,proto3" json:"page_id,omitempty"`
-	// Default 500.
+	// Safety net against runaway documents; max_total_tokens is the limit that
+	// normally binds. Default 800.
 	MaxElementsPerFrame *int32 `protobuf:"varint,4,opt,name=max_elements_per_frame,json=maxElementsPerFrame,proto3,oneof" json:"max_elements_per_frame,omitempty"`
-	// Default 240.
+	// Max length of human-readable strings (labels, text, values). Default 300.
+	// Identifier-like attributes have their own shorter cap.
 	MaxTextLength *int32 `protobuf:"varint,5,opt,name=max_text_length,json=maxTextLength,proto3,oneof" json:"max_text_length,omitempty"`
+	// "text" (default) for the compact line format, "json" for the structured
+	// form. Only the requested representation is built.
+	Format *string `protobuf:"bytes,6,opt,name=format,proto3,oneof" json:"format,omitempty"`
+	// Budget across ALL frames, in estimated tokens rather than characters.
+	// Default 8000.
+	MaxTotalTokens *int32 `protobuf:"varint,7,opt,name=max_total_tokens,json=maxTotalTokens,proto3,oneof" json:"max_total_tokens,omitempty"`
+	// Include element bounds as bounds="x,y,w,h".
+	IncludeBounds *bool `protobuf:"varint,8,opt,name=include_bounds,json=includeBounds,proto3,oneof" json:"include_bounds,omitempty"`
+	// Only emit elements intersecting the frame's current viewport.
+	ViewportOnly *bool `protobuf:"varint,9,opt,name=viewport_only,json=viewportOnly,proto3,oneof" json:"viewport_only,omitempty"`
+	// Scope root by backend node ID from a previous wait/getObservation.
+	// Requires frame_id. At most one of backend_node_id, selector, js_expression.
+	// Omit all three for the whole page.
+	BackendNodeId *int32 `protobuf:"varint,10,opt,name=backend_node_id,json=backendNodeId,proto3,oneof" json:"backend_node_id,omitempty"`
+	// Scope root by CSS selector.
+	Selector *string `protobuf:"bytes,11,opt,name=selector,proto3,oneof" json:"selector,omitempty"`
+	// Scope root by JS expression that evaluates to a DOM Element
+	// (including __wrc.shadow(...) for closed shadow roots).
+	JsExpression *string `protobuf:"bytes,12,opt,name=js_expression,json=jsExpression,proto3,oneof" json:"js_expression,omitempty"`
+	// Where to look up the scope root: a specific frameId, empty/omitted for
+	// the main frame, or "ALL_FRAMES" to search every frame until found.
+	// Ignored when observing the whole page.
+	FrameId       *string `protobuf:"bytes,13,opt,name=frame_id,json=frameId,proto3,oneof" json:"frame_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5645,14 +5682,68 @@ func (x *GetObservationRequest) GetMaxTextLength() int32 {
 	return 0
 }
 
+func (x *GetObservationRequest) GetFormat() string {
+	if x != nil && x.Format != nil {
+		return *x.Format
+	}
+	return ""
+}
+
+func (x *GetObservationRequest) GetMaxTotalTokens() int32 {
+	if x != nil && x.MaxTotalTokens != nil {
+		return *x.MaxTotalTokens
+	}
+	return 0
+}
+
+func (x *GetObservationRequest) GetIncludeBounds() bool {
+	if x != nil && x.IncludeBounds != nil {
+		return *x.IncludeBounds
+	}
+	return false
+}
+
+func (x *GetObservationRequest) GetViewportOnly() bool {
+	if x != nil && x.ViewportOnly != nil {
+		return *x.ViewportOnly
+	}
+	return false
+}
+
+func (x *GetObservationRequest) GetBackendNodeId() int32 {
+	if x != nil && x.BackendNodeId != nil {
+		return *x.BackendNodeId
+	}
+	return 0
+}
+
+func (x *GetObservationRequest) GetSelector() string {
+	if x != nil && x.Selector != nil {
+		return *x.Selector
+	}
+	return ""
+}
+
+func (x *GetObservationRequest) GetJsExpression() string {
+	if x != nil && x.JsExpression != nil {
+		return *x.JsExpression
+	}
+	return ""
+}
+
+func (x *GetObservationRequest) GetFrameId() string {
+	if x != nil && x.FrameId != nil {
+		return *x.FrameId
+	}
+	return ""
+}
+
 type GetObservationResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// Compact plain-text observation intended for LLM context.
-	ObservationText string `protobuf:"bytes,1,opt,name=observation_text,json=observationText,proto3" json:"observation_text,omitempty"`
-	// Structured JSON with frames, elements, counts, and limits.
-	ObservationJson string `protobuf:"bytes,2,opt,name=observation_json,json=observationJson,proto3" json:"observation_json,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// The observation in the requested format.
+	Observation   string `protobuf:"bytes,1,opt,name=observation,proto3" json:"observation,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *GetObservationResponse) Reset() {
@@ -5685,16 +5776,9 @@ func (*GetObservationResponse) Descriptor() ([]byte, []int) {
 	return file_wrc_proto_rawDescGZIP(), []int{73}
 }
 
-func (x *GetObservationResponse) GetObservationText() string {
+func (x *GetObservationResponse) GetObservation() string {
 	if x != nil {
-		return x.ObservationText
-	}
-	return ""
-}
-
-func (x *GetObservationResponse) GetObservationJson() string {
-	if x != nil {
-		return x.ObservationJson
+		return x.Observation
 	}
 	return ""
 }
@@ -7502,7 +7586,7 @@ const file_wrc_proto_rawDesc = "" +
 	"is_visible\x18\x04 \x01(\bR\tisVisible\x12-\n" +
 	"\x06bounds\x18\x05 \x01(\v2\x15.browserscale.v1.RectR\x06bounds\x12\x15\n" +
 	"\x06root_x\x18\x06 \x01(\x01R\x05rootX\x12\x15\n" +
-	"\x06root_y\x18\a \x01(\x01R\x05rootY\"\xb0\x04\n" +
+	"\x06root_y\x18\a \x01(\x01R\x05rootY\"\xde\x04\n" +
 	"\fOccluderInfo\x12&\n" +
 	"\x0fbackend_node_id\x18\x01 \x01(\x05R\rbackendNodeId\x12\x19\n" +
 	"\bframe_id\x18\x02 \x01(\tR\aframeId\x12\x19\n" +
@@ -7519,7 +7603,8 @@ const file_wrc_proto_rawDesc = "" +
 	"\aopacity\x18\n" +
 	" \x01(\x01H\x05R\aopacity\x88\x01\x01\x12\x1c\n" +
 	"\az_index\x18\v \x01(\tH\x06R\x06zIndex\x88\x01\x01\x12=\n" +
-	"\x18hittable_while_invisible\x18\f \x01(\bH\aR\x16hittableWhileInvisible\x88\x01\x01B\x05\n" +
+	"\x18hittable_while_invisible\x18\f \x01(\bH\aR\x16hittableWhileInvisible\x88\x01\x01\x12\x1f\n" +
+	"\bposition\x18\r \x01(\tH\bR\bposition\x88\x01\x01B\x05\n" +
 	"\x03_idB\r\n" +
 	"\v_class_nameB\a\n" +
 	"\x05_textB\x11\n" +
@@ -7529,7 +7614,8 @@ const file_wrc_proto_rawDesc = "" +
 	"\b_opacityB\n" +
 	"\n" +
 	"\b_z_indexB\x1b\n" +
-	"\x19_hittable_while_invisible\"\xc9\x01\n" +
+	"\x19_hittable_while_invisibleB\v\n" +
+	"\t_position\"\xc9\x01\n" +
 	"\n" +
 	"ClickError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
@@ -8016,19 +8102,35 @@ const file_wrc_proto_rawDesc = "" +
 	"\t_frame_idB\b\n" +
 	"\x06_depth\"\"\n" +
 	"\x0eGetDOMResponse\x12\x10\n" +
-	"\x03dom\x18\x01 \x01(\tR\x03dom\"\xfe\x01\n" +
+	"\x03dom\x18\x01 \x01(\tR\x03dom\"\xbd\x05\n" +
 	"\x15GetObservationRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
 	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x17\n" +
 	"\apage_id\x18\x03 \x01(\tR\x06pageId\x128\n" +
 	"\x16max_elements_per_frame\x18\x04 \x01(\x05H\x00R\x13maxElementsPerFrame\x88\x01\x01\x12+\n" +
-	"\x0fmax_text_length\x18\x05 \x01(\x05H\x01R\rmaxTextLength\x88\x01\x01B\x19\n" +
+	"\x0fmax_text_length\x18\x05 \x01(\x05H\x01R\rmaxTextLength\x88\x01\x01\x12\x1b\n" +
+	"\x06format\x18\x06 \x01(\tH\x02R\x06format\x88\x01\x01\x12-\n" +
+	"\x10max_total_tokens\x18\a \x01(\x05H\x03R\x0emaxTotalTokens\x88\x01\x01\x12*\n" +
+	"\x0einclude_bounds\x18\b \x01(\bH\x04R\rincludeBounds\x88\x01\x01\x12(\n" +
+	"\rviewport_only\x18\t \x01(\bH\x05R\fviewportOnly\x88\x01\x01\x12+\n" +
+	"\x0fbackend_node_id\x18\n" +
+	" \x01(\x05H\x06R\rbackendNodeId\x88\x01\x01\x12\x1f\n" +
+	"\bselector\x18\v \x01(\tH\aR\bselector\x88\x01\x01\x12(\n" +
+	"\rjs_expression\x18\f \x01(\tH\bR\fjsExpression\x88\x01\x01\x12\x1e\n" +
+	"\bframe_id\x18\r \x01(\tH\tR\aframeId\x88\x01\x01B\x19\n" +
 	"\x17_max_elements_per_frameB\x12\n" +
-	"\x10_max_text_length\"n\n" +
-	"\x16GetObservationResponse\x12)\n" +
-	"\x10observation_text\x18\x01 \x01(\tR\x0fobservationText\x12)\n" +
-	"\x10observation_json\x18\x02 \x01(\tR\x0fobservationJson\"\x91\x01\n" +
+	"\x10_max_text_lengthB\t\n" +
+	"\a_formatB\x13\n" +
+	"\x11_max_total_tokensB\x11\n" +
+	"\x0f_include_boundsB\x10\n" +
+	"\x0e_viewport_onlyB\x12\n" +
+	"\x10_backend_node_idB\v\n" +
+	"\t_selectorB\x10\n" +
+	"\x0e_js_expressionB\v\n" +
+	"\t_frame_id\"R\n" +
+	"\x16GetObservationResponse\x12 \n" +
+	"\vobservation\x18\x01 \x01(\tR\vobservationJ\x04\b\x02\x10\x03R\x10observation_json\"\x91\x01\n" +
 	"\x11GetDOMHashRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +

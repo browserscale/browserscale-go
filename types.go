@@ -190,6 +190,11 @@ type OccluderInfo struct {
 	// a real click is swallowed even at visibility:hidden / opacity:0. When false
 	// and the element is invisible, a real click would fall through.
 	HittableWhileInvisible bool
+	// Position is the computed position keyword. "fixed"/"sticky" means the
+	// blocker is pinned (by itself or an ancestor) and stays put no matter where
+	// the pointer goes — clear it by scrolling the target out from under it;
+	// ordinary overlays often collapse once the pointer leaves.
+	Position string
 }
 
 // ClickError is returned as the error from [CloudBrowser.Click] /
@@ -415,12 +420,49 @@ type SelectOptionResult struct {
 	SelectedText  string
 }
 
-// ObservationResult is the compact page snapshot returned by
-// [CloudBrowser.GetObservation] — the visible, interactive elements
-// rendered as prompt-friendly text and as JSON.
-type ObservationResult struct {
-	Text string
-	Json string
+// ObservationOpts customizes a [CloudBrowser.GetObservationWith] call.
+// Zero/empty values mean "use the server default".
+type ObservationOpts struct {
+	// Format is "text" (default) for the compact line format meant to be handed
+	// to a model as-is, or "json" for the structured form. Only the requested
+	// representation is built, so asking for one does not cost the other.
+	Format string
+
+	// MaxElementsPerFrame caps emitted elements per frame. 0 = server default
+	// (800). This is a safety net against runaway documents; MaxTotalTokens is
+	// the limit that normally binds.
+	MaxElementsPerFrame int32
+
+	// MaxTextLength caps human-readable strings (labels, text, values) in
+	// characters. 0 = server default (300). Identifier-like attributes (type,
+	// name, role) have their own fixed, shorter cap and are unaffected.
+	MaxTextLength int32
+
+	// MaxTotalTokens budgets the whole page in estimated tokens rather than
+	// characters, because the same character count is worth roughly four times
+	// as many tokens in CJK text as in ASCII. 0 = server default (8000). Frames
+	// are visited in tree order and each gets whatever is left.
+	MaxTotalTokens int32
+
+	// IncludeBounds adds bounds="x,y,w,h" to every row. Off by default; bounds
+	// cost about as much as the rest of a row and are rarely needed, since
+	// elements are addressed by backendNodeId.
+	IncludeBounds bool
+
+	// ViewportOnly limits the walk to elements intersecting the frame's current
+	// viewport. Off by default.
+	ViewportOnly bool
+
+	// Subtree scope — set exactly one of BackendNodeId, Selector or
+	// JSExpression to observe only that element's subtree (follow-up looks at a
+	// form then cost the form, not the ads around it). Omit all three for the
+	// whole page. Child iframes reached inside the scope are still visited.
+	BackendNodeId int32
+	Selector      string
+	JSExpression  string
+	// InFrame looks up the scope root: empty = main frame, a frameId, or
+	// [AllFrames]. Ignored when observing the whole page.
+	InFrame string
 }
 
 // ScreenshotResult is a single captured image of the page, returned by

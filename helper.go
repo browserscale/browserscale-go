@@ -316,6 +316,7 @@ func occluderInfoFromProto(o *generated.OccluderInfo) *OccluderInfo {
 		Opacity:                o.GetOpacity(),
 		ZIndex:                 o.GetZIndex(),
 		HittableWhileInvisible: o.GetHittableWhileInvisible(),
+		Position:               o.GetPosition(),
 	}
 }
 

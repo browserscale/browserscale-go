@@ -59,10 +59,11 @@ Rent an isolated browser session in seconds, automate it with human-like input, 
   through. Wait for, block, mock or modify requests and responses without
   leaving the SDK; mark repeated assets as static with `SetStaticPaths` to
   serve them from a server-side cache and cut proxy bandwidth on repeat runs.
-- **Agent-friendly observation** — `GetObservation` returns a compact
-  text/JSON view of the visible, interactive elements across every frame, each
-  with a node handle to act on, so a model reasons over what matters instead of
-  raw HTML.
+- **Agent-friendly observation** — `GetObservation` returns one line per visible
+  element across every frame, under headers carrying the URL, title and scroll
+  offset, with live form state (typed values, checkbox state, `<select>`
+  options) and a node handle to act on. A model reasons over what matters
+  instead of raw HTML, and doesn't need a JS round-trip to ask where it is.
 - **Flow-optimized, idiomatic Go** — context-first methods with explicit
   errors, `Wait` races multiple outcomes, JS locators target elements by page
   logic when CSS is not enough.
@@ -138,7 +139,7 @@ in `Method` / `MethodWith` pairs — the plain form for the common case, the
 | `Click(ctx, locator, opts…)` | Human-like click; rich `ClickError` (incl. the occluding element) on failure. |
 | `FillWith(ctx, locator, text, FillOpts{})` | Per-key typing that fires real input events; `InsertText` for bulk commit. |
 | `Evaluate(ctx, expr)` | Run JS in the page/frame and get a typed value back. |
-| `GetObservation(ctx, …)` | Compact, node-handle-tagged view of interactive elements across frames. |
+| `GetObservation(ctx)` | Compact, node-handle-tagged view of the visible page across frames; `GetObservationWith` for budgets/format. |
 | `SolveCaptcha(ctx, …)` | Solve an interactive challenge in the live browser. |
 | `Close()` / `StopBrowser()` | Release the rental. `CloseConn()` detaches without releasing it. |
 
