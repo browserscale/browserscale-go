@@ -136,6 +136,51 @@ func storageFromProto(es []*generated.StorageOriginEntry) []StorageOriginEntry {
 	return out
 }
 
+func authSessionFromProto(s *generated.AuthSession) *AuthSession {
+	if s == nil {
+		return nil
+	}
+	out := &AuthSession{
+		GaiaID:               s.GaiaId,
+		Email:                s.Email,
+		RefreshToken:         s.RefreshToken,
+		WrappedBindingKey:    s.WrappedBindingKey,
+		SigninScopedDeviceID: s.SigninScopedDeviceId,
+		SyncConsent:          s.SyncConsent,
+	}
+	if len(s.DbscSessions) > 0 {
+		out.DbscSessions = make([]DbscSession, len(s.DbscSessions))
+		for i, d := range s.DbscSessions {
+			if d == nil {
+				continue
+			}
+			out.DbscSessions[i] = DbscSession{Site: d.Site, Session: d.Session}
+		}
+	}
+	return out
+}
+
+func authSessionToProto(s *AuthSession) *generated.AuthSession {
+	if s == nil {
+		return nil
+	}
+	out := &generated.AuthSession{
+		GaiaId:               s.GaiaID,
+		Email:                s.Email,
+		RefreshToken:         s.RefreshToken,
+		WrappedBindingKey:    s.WrappedBindingKey,
+		SigninScopedDeviceId: s.SigninScopedDeviceID,
+		SyncConsent:          s.SyncConsent,
+	}
+	if len(s.DbscSessions) > 0 {
+		out.DbscSessions = make([]*generated.DbscSession, len(s.DbscSessions))
+		for i, d := range s.DbscSessions {
+			out.DbscSessions[i] = &generated.DbscSession{Site: d.Site, Session: d.Session}
+		}
+	}
+	return out
+}
+
 // waitResultFromProto splits a WaitResult into the res, err shape used by the
 // SDK: the match payload always, plus a typed *WaitError when no condition
 // matched before the deadline (index=-1 with an error detail). The returned

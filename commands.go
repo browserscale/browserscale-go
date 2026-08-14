@@ -240,6 +240,11 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 // Implemented in cookies.go: GetCookies, SetCookies, ClearCookies, and
 // CookieParam structs for browser cookie attributes.
 
+// ── Auth / DBSC ──
+//
+// Implemented in auth_session.go: GetAuthSession, SetAuthSession, and
+// AuthSession / DbscSession for portable signed-in personas.
+
 // ── DOM / observation ──
 
 // GetDOM returns a JSON string in CDP DOM.Node shape for the requested frame.
