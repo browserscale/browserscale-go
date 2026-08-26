@@ -15,6 +15,7 @@ type BrowserConfig struct {
 	webglRenderer   string
 	webglVendor     string
 	webglExtensions []string
+	gpuEnabled      bool
 }
 
 // NewBrowserConfig returns a [BrowserConfig] populated with the required
@@ -114,5 +115,27 @@ func (c *BrowserConfig) UnstableWithFakeGpu(renderer string, vendor string, exte
 	c.webglRenderer = renderer
 	c.webglVendor = vendor
 	c.webglExtensions = extensions
+	return c
+}
+
+// UnstableWithGpuEnabled restricts the rental to hosts that render on a
+// physical GPU instead of the software renderer.
+//
+// Unstable API — do not build on it. It exists to compare GPU-backed hosts
+// against software rendering while that rollout is in progress; once every
+// host is GPU-backed the flag becomes meaningless and is removed. Note that
+// it narrows the pool: the rental fails rather than falling back to a
+// software-rendered host, so it can report no capacity while ordinary
+// rentals still succeed.
+//
+// @param enabled - true to require a GPU-backed host
+//
+// @returns the modified *BrowserConfig for chaining
+//
+// @example
+//
+//	cfg := browserscale.NewBrowserConfig(apiKey, 600, "", 0, "", "").UnstableWithGpuEnabled(true)
+func (c *BrowserConfig) UnstableWithGpuEnabled(enabled bool) *BrowserConfig {
+	c.gpuEnabled = enabled
 	return c
 }

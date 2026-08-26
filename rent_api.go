@@ -20,6 +20,7 @@ type rentRequest struct {
 	WebGLRenderer            string   `json:"webglRenderer,omitempty"`
 	WebGLVendor              string   `json:"webglVendor,omitempty"`
 	WebGLSupportedExtensions []string `json:"webglSupportedExtensions,omitempty"`
+	GpuEnabled               bool     `json:"gpuEnabled,omitempty"`
 }
 
 type rentResponse struct {
@@ -75,6 +76,9 @@ func callRentApi(config *BrowserConfig) (*rentResponse, error) {
 	}
 	if len(config.webglExtensions) > 0 {
 		rentData.WebGLSupportedExtensions = config.webglExtensions
+	}
+	if config.gpuEnabled {
+		rentData.GpuEnabled = true
 	}
 
 	rentJSON, err := json.Marshal(rentData)
