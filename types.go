@@ -57,6 +57,105 @@ type InterceptedResponse struct {
 	Body       string
 }
 
+// NetworkResourceType is the kind of load an exchange belongs to. It is a
+// string rather than a closed enum so an exchange from a newer browser still
+// round-trips instead of decoding to an empty value; compare against the
+// NetworkResource* constants.
+type NetworkResourceType string
+
+const (
+	NetworkResourceDocument   NetworkResourceType = "document"
+	NetworkResourceSubframe   NetworkResourceType = "subframe"
+	NetworkResourceScript     NetworkResourceType = "script"
+	NetworkResourceStylesheet NetworkResourceType = "stylesheet"
+	NetworkResourceImage      NetworkResourceType = "image"
+	NetworkResourceFont       NetworkResourceType = "font"
+	NetworkResourceMedia      NetworkResourceType = "media"
+	// NetworkResourceFetch covers fetch(), XMLHttpRequest and EventSource
+	// alike: they are indistinguishable at the capture point.
+	NetworkResourceFetch     NetworkResourceType = "fetch"
+	NetworkResourceWorker    NetworkResourceType = "worker"
+	NetworkResourceManifest  NetworkResourceType = "manifest"
+	NetworkResourceObject    NetworkResourceType = "object"
+	NetworkResourceCSPReport NetworkResourceType = "csp-report"
+	NetworkResourceOther     NetworkResourceType = "other"
+)
+
+// NetworkServedFrom says where an exchange's response came from.
+type NetworkServedFrom string
+
+const (
+	NetworkServedFromNetwork       NetworkServedFrom = "network"
+	NetworkServedFromCache         NetworkServedFrom = "cache"
+	NetworkServedFromServiceWorker NetworkServedFrom = "serviceWorker"
+	// NetworkServedFromStaticCache means browserscale's own static cache
+	// answered it — see [CloudBrowser.SetStaticPaths].
+	NetworkServedFromStaticCache NetworkServedFrom = "wrcStaticCache"
+	NetworkServedFromSynthetic   NetworkServedFrom = "wrcSynthetic"
+)
+
+// NetworkExchange is one request together with the response it received, as
+// reported by [CloudBrowser.CaptureNetwork].
+//
+// A redirect chain arrives as one exchange per hop: the hops share ChainId and
+// count up RedirectIndex, so a 302 and the request it points at are two
+// exchanges, each with its own headers and status.
+type NetworkExchange struct {
+	// RequestId is unique per hop.
+	RequestId string
+	// ChainId is shared by every hop of one redirect chain.
+	ChainId string
+	// RedirectIndex is 0 for the original request and counts up once per
+	// redirect followed.
+	RedirectIndex int32
+	// FrameId is the frame that issued the request; empty for worker traffic.
+	FrameId string
+	// IsOOPIF reports whether that frame runs in its own process. Capture
+	// happens in the browser process, so cross-process iframes are included.
+	IsOOPIF      bool
+	ResourceType NetworkResourceType
+
+	Method string
+	Url    string
+	// InitiatorUrl is the origin that started the request; empty when the
+	// browser itself did.
+	InitiatorUrl   string
+	RequestHeaders []Header
+	// RequestHeadersAreWire reports whether RequestHeaders are the bytes
+	// actually sent — Cookie, User-Agent and Sec-* included — rather than what
+	// the page asked for before the network stack filled in the rest.
+	RequestHeadersAreWire bool
+	// RequestBody holds an inline body only. File and streamed uploads set
+	// RequestBodyTruncated instead of appearing here.
+	RequestBody          []byte
+	RequestBodyTruncated bool
+
+	// HasResponse is false when the request failed before any response
+	// arrived; Error then says why.
+	HasResponse bool
+	StatusCode  int32
+	StatusText  string
+	MimeType    string
+	// Protocol is the negotiated ALPN protocol, e.g. "h2" or "http/1.1".
+	Protocol               string
+	RemoteAddress          string
+	ServedFrom             NetworkServedFrom
+	ResponseHeaders        []Header
+	ResponseHeadersAreWire bool
+	// ResponseBody is populated only when body capture was requested for this
+	// URL and applied; check ResponseBodyCaptured to tell an empty body from an
+	// uncaptured one. Binary content does not survive the browser boundary
+	// intact — see NetworkBodiesAll.
+	ResponseBody          []byte
+	ResponseBodyTruncated bool
+	ResponseBodyCaptured  bool
+
+	EncodedDataLength int64
+
+	// Error is the net error name (e.g. "net::ERR_ABORTED"), empty on success.
+	Error string
+}
+
 // WaitResult is the outcome of a [CloudBrowser.Wait] / [CloudBrowser.WaitForAny]
 // call: which condition matched (Index, in argument order) and where the
 // matched element lives.

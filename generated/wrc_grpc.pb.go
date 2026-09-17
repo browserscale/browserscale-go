@@ -20,51 +20,61 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Browser_SetProxy_FullMethodName           = "/browserscale.v1.Browser/SetProxy"
-	Browser_GetPages_FullMethodName           = "/browserscale.v1.Browser/GetPages"
-	Browser_Navigate_FullMethodName           = "/browserscale.v1.Browser/Navigate"
-	Browser_LoadHTML_FullMethodName           = "/browserscale.v1.Browser/LoadHTML"
-	Browser_Evaluate_FullMethodName           = "/browserscale.v1.Browser/Evaluate"
-	Browser_Run_FullMethodName                = "/browserscale.v1.Browser/Run"
-	Browser_WaitForAny_FullMethodName         = "/browserscale.v1.Browser/WaitForAny"
-	Browser_SelectOption_FullMethodName       = "/browserscale.v1.Browser/SelectOption"
-	Browser_ScrollTo_FullMethodName           = "/browserscale.v1.Browser/ScrollTo"
-	Browser_MoveTo_FullMethodName             = "/browserscale.v1.Browser/MoveTo"
-	Browser_Click_FullMethodName              = "/browserscale.v1.Browser/Click"
-	Browser_Drag_FullMethodName               = "/browserscale.v1.Browser/Drag"
-	Browser_Fill_FullMethodName               = "/browserscale.v1.Browser/Fill"
-	Browser_AddReaction_FullMethodName        = "/browserscale.v1.Browser/AddReaction"
-	Browser_RemoveReaction_FullMethodName     = "/browserscale.v1.Browser/RemoveReaction"
-	Browser_ListReactions_FullMethodName      = "/browserscale.v1.Browser/ListReactions"
-	Browser_SetBlockList_FullMethodName       = "/browserscale.v1.Browser/SetBlockList"
-	Browser_SetStaticPaths_FullMethodName     = "/browserscale.v1.Browser/SetStaticPaths"
-	Browser_WaitForAnyRequest_FullMethodName  = "/browserscale.v1.Browser/WaitForAnyRequest"
-	Browser_WaitForAnyResponse_FullMethodName = "/browserscale.v1.Browser/WaitForAnyResponse"
-	Browser_ModifyRequest_FullMethodName      = "/browserscale.v1.Browser/ModifyRequest"
-	Browser_GetCookies_FullMethodName         = "/browserscale.v1.Browser/GetCookies"
-	Browser_SetCookies_FullMethodName         = "/browserscale.v1.Browser/SetCookies"
-	Browser_ClearCookies_FullMethodName       = "/browserscale.v1.Browser/ClearCookies"
-	Browser_GetStorage_FullMethodName         = "/browserscale.v1.Browser/GetStorage"
-	Browser_SetStorage_FullMethodName         = "/browserscale.v1.Browser/SetStorage"
-	Browser_ClearStorage_FullMethodName       = "/browserscale.v1.Browser/ClearStorage"
-	Browser_GetAuthSession_FullMethodName     = "/browserscale.v1.Browser/GetAuthSession"
-	Browser_SetAuthSession_FullMethodName     = "/browserscale.v1.Browser/SetAuthSession"
-	Browser_GetDOM_FullMethodName             = "/browserscale.v1.Browser/GetDOM"
-	Browser_GetDOMHash_FullMethodName         = "/browserscale.v1.Browser/GetDOMHash"
-	Browser_GetObservation_FullMethodName     = "/browserscale.v1.Browser/GetObservation"
-	Browser_InspectAtPosition_FullMethodName  = "/browserscale.v1.Browser/InspectAtPosition"
-	Browser_HighlightNode_FullMethodName      = "/browserscale.v1.Browser/HighlightNode"
-	Browser_Screenshot_FullMethodName         = "/browserscale.v1.Browser/Screenshot"
-	Browser_ReadCanvas_FullMethodName         = "/browserscale.v1.Browser/ReadCanvas"
-	Browser_InsertText_FullMethodName         = "/browserscale.v1.Browser/InsertText"
-	Browser_Type_FullMethodName               = "/browserscale.v1.Browser/Type"
-	Browser_PressKey_FullMethodName           = "/browserscale.v1.Browser/PressKey"
-	Browser_ReleaseKey_FullMethodName         = "/browserscale.v1.Browser/ReleaseKey"
-	Browser_GetSelection_FullMethodName       = "/browserscale.v1.Browser/GetSelection"
-	Browser_SolveCaptcha_FullMethodName       = "/browserscale.v1.Browser/SolveCaptcha"
-	Browser_GetStreamConfig_FullMethodName    = "/browserscale.v1.Browser/GetStreamConfig"
-	Browser_StartStream_FullMethodName        = "/browserscale.v1.Browser/StartStream"
-	Browser_StopStream_FullMethodName         = "/browserscale.v1.Browser/StopStream"
+	Browser_SetProxy_FullMethodName               = "/browserscale.v1.Browser/SetProxy"
+	Browser_GetPages_FullMethodName               = "/browserscale.v1.Browser/GetPages"
+	Browser_Navigate_FullMethodName               = "/browserscale.v1.Browser/Navigate"
+	Browser_LoadHTML_FullMethodName               = "/browserscale.v1.Browser/LoadHTML"
+	Browser_Evaluate_FullMethodName               = "/browserscale.v1.Browser/Evaluate"
+	Browser_Run_FullMethodName                    = "/browserscale.v1.Browser/Run"
+	Browser_WaitForAny_FullMethodName             = "/browserscale.v1.Browser/WaitForAny"
+	Browser_SelectOption_FullMethodName           = "/browserscale.v1.Browser/SelectOption"
+	Browser_ScrollTo_FullMethodName               = "/browserscale.v1.Browser/ScrollTo"
+	Browser_MoveTo_FullMethodName                 = "/browserscale.v1.Browser/MoveTo"
+	Browser_Click_FullMethodName                  = "/browserscale.v1.Browser/Click"
+	Browser_Drag_FullMethodName                   = "/browserscale.v1.Browser/Drag"
+	Browser_Fill_FullMethodName                   = "/browserscale.v1.Browser/Fill"
+	Browser_AddReaction_FullMethodName            = "/browserscale.v1.Browser/AddReaction"
+	Browser_RemoveReaction_FullMethodName         = "/browserscale.v1.Browser/RemoveReaction"
+	Browser_ListReactions_FullMethodName          = "/browserscale.v1.Browser/ListReactions"
+	Browser_SetBlockList_FullMethodName           = "/browserscale.v1.Browser/SetBlockList"
+	Browser_SetStaticPaths_FullMethodName         = "/browserscale.v1.Browser/SetStaticPaths"
+	Browser_WaitForAnyRequest_FullMethodName      = "/browserscale.v1.Browser/WaitForAnyRequest"
+	Browser_WaitForAnyResponse_FullMethodName     = "/browserscale.v1.Browser/WaitForAnyResponse"
+	Browser_ModifyRequest_FullMethodName          = "/browserscale.v1.Browser/ModifyRequest"
+	Browser_StartNetworkCapture_FullMethodName    = "/browserscale.v1.Browser/StartNetworkCapture"
+	Browser_StopNetworkCapture_FullMethodName     = "/browserscale.v1.Browser/StopNetworkCapture"
+	Browser_StreamNetworkExchanges_FullMethodName = "/browserscale.v1.Browser/StreamNetworkExchanges"
+	Browser_GetCookies_FullMethodName             = "/browserscale.v1.Browser/GetCookies"
+	Browser_SetCookies_FullMethodName             = "/browserscale.v1.Browser/SetCookies"
+	Browser_ClearCookies_FullMethodName           = "/browserscale.v1.Browser/ClearCookies"
+	Browser_GetStorage_FullMethodName             = "/browserscale.v1.Browser/GetStorage"
+	Browser_SetStorage_FullMethodName             = "/browserscale.v1.Browser/SetStorage"
+	Browser_ClearStorage_FullMethodName           = "/browserscale.v1.Browser/ClearStorage"
+	Browser_GetAuthSession_FullMethodName         = "/browserscale.v1.Browser/GetAuthSession"
+	Browser_SetAuthSession_FullMethodName         = "/browserscale.v1.Browser/SetAuthSession"
+	Browser_GetDOM_FullMethodName                 = "/browserscale.v1.Browser/GetDOM"
+	Browser_GetDOMHash_FullMethodName             = "/browserscale.v1.Browser/GetDOMHash"
+	Browser_GetObservation_FullMethodName         = "/browserscale.v1.Browser/GetObservation"
+	Browser_InspectAtPosition_FullMethodName      = "/browserscale.v1.Browser/InspectAtPosition"
+	Browser_HighlightNode_FullMethodName          = "/browserscale.v1.Browser/HighlightNode"
+	Browser_StartDomMirror_FullMethodName         = "/browserscale.v1.Browser/StartDomMirror"
+	Browser_StopDomMirror_FullMethodName          = "/browserscale.v1.Browser/StopDomMirror"
+	Browser_GetDomChildren_FullMethodName         = "/browserscale.v1.Browser/GetDomChildren"
+	Browser_ReleaseDomSubtree_FullMethodName      = "/browserscale.v1.Browser/ReleaseDomSubtree"
+	Browser_RevealDomNode_FullMethodName          = "/browserscale.v1.Browser/RevealDomNode"
+	Browser_GetDomRevision_FullMethodName         = "/browserscale.v1.Browser/GetDomRevision"
+	Browser_StreamDomEvents_FullMethodName        = "/browserscale.v1.Browser/StreamDomEvents"
+	Browser_Screenshot_FullMethodName             = "/browserscale.v1.Browser/Screenshot"
+	Browser_ReadCanvas_FullMethodName             = "/browserscale.v1.Browser/ReadCanvas"
+	Browser_InsertText_FullMethodName             = "/browserscale.v1.Browser/InsertText"
+	Browser_Type_FullMethodName                   = "/browserscale.v1.Browser/Type"
+	Browser_PressKey_FullMethodName               = "/browserscale.v1.Browser/PressKey"
+	Browser_ReleaseKey_FullMethodName             = "/browserscale.v1.Browser/ReleaseKey"
+	Browser_GetSelection_FullMethodName           = "/browserscale.v1.Browser/GetSelection"
+	Browser_SolveCaptcha_FullMethodName           = "/browserscale.v1.Browser/SolveCaptcha"
+	Browser_GetStreamConfig_FullMethodName        = "/browserscale.v1.Browser/GetStreamConfig"
+	Browser_StartStream_FullMethodName            = "/browserscale.v1.Browser/StartStream"
+	Browser_StopStream_FullMethodName             = "/browserscale.v1.Browser/StopStream"
 )
 
 // BrowserClient is the client API for Browser service.
@@ -101,6 +111,13 @@ type BrowserClient interface {
 	WaitForAnyRequest(ctx context.Context, in *WaitForAnyRequestRequest, opts ...grpc.CallOption) (*WaitForAnyRequestResponse, error)
 	WaitForAnyResponse(ctx context.Context, in *WaitForAnyResponseRequest, opts ...grpc.CallOption) (*WaitForAnyResponseResponse, error)
 	ModifyRequest(ctx context.Context, in *ModifyRequestRequest, opts ...grpc.CallOption) (*ModifyRequestResponse, error)
+	// Network capture — every matching request in the session, reported as it
+	// completes. Start/Stop are session state; the stream is a separate
+	// subscription, so a capture survives a reader reconnect and two readers
+	// can watch one capture.
+	StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	StopNetworkCapture(ctx context.Context, in *StopNetworkCaptureRequest, opts ...grpc.CallOption) (*StopNetworkCaptureResponse, error)
+	StreamNetworkExchanges(ctx context.Context, in *StreamNetworkExchangesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NetworkExchangeEvent], error)
 	// Cookies
 	GetCookies(ctx context.Context, in *GetCookiesRequest, opts ...grpc.CallOption) (*GetCookiesResponse, error)
 	SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -118,6 +135,30 @@ type BrowserClient interface {
 	GetObservation(ctx context.Context, in *GetObservationRequest, opts ...grpc.CallOption) (*GetObservationResponse, error)
 	InspectAtPosition(ctx context.Context, in *InspectAtPositionRequest, opts ...grpc.CallOption) (*InspectAtPositionResponse, error)
 	HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
+	// StartDomMirror returns the top of the main document and from then on the
+	// browser reports changes to the part the client has actually expanded; the
+	// reads grow and shrink that part. Together they replace polling GetDOMHash
+	// and re-fetching GetDOM.
+	//
+	// An <iframe> is an ordinary element whose one child is the document it
+	// hosts, fetched by expanding it — which is also what starts mirroring that
+	// frame, so frames cost nothing until someone opens one. There is no frame
+	// lifecycle to subscribe to. RevealDomNode reaches into a frame nobody
+	// opened and starts the ones on the way, which is what makes a hit test
+	// usable against a lazily loaded tree.
+	//
+	// Like network capture, the stream is a separate subscription so a mirror
+	// survives a reader reconnect. Unlike it, the stream carries both updates
+	// and resyncs on ONE channel: a resync means "everything you hold is void",
+	// which is only interpretable in order against the batches around it.
+	StartDomMirror(ctx context.Context, in *StartDomMirrorRequest, opts ...grpc.CallOption) (*StartDomMirrorResponse, error)
+	StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	GetDomChildren(ctx context.Context, in *GetDomChildrenRequest, opts ...grpc.CallOption) (*GetDomChildrenResponse, error)
+	ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RevealDomNode(ctx context.Context, in *RevealDomNodeRequest, opts ...grpc.CallOption) (*RevealDomNodeResponse, error)
+	GetDomRevision(ctx context.Context, in *GetDomRevisionRequest, opts ...grpc.CallOption) (*GetDomRevisionResponse, error)
+	StreamDomEvents(ctx context.Context, in *StreamDomEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DomEvent], error)
 	// Screenshot / capture
 	Screenshot(ctx context.Context, in *ScreenshotRequest, opts ...grpc.CallOption) (*ScreenshotResponse, error)
 	ReadCanvas(ctx context.Context, in *ReadCanvasRequest, opts ...grpc.CallOption) (*ReadCanvasResponse, error)
@@ -357,6 +398,45 @@ func (c *browserClient) ModifyRequest(ctx context.Context, in *ModifyRequestRequ
 	return out, nil
 }
 
+func (c *browserClient) StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Browser_StartNetworkCapture_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StopNetworkCapture(ctx context.Context, in *StopNetworkCaptureRequest, opts ...grpc.CallOption) (*StopNetworkCaptureResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StopNetworkCaptureResponse)
+	err := c.cc.Invoke(ctx, Browser_StopNetworkCapture_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StreamNetworkExchanges(ctx context.Context, in *StreamNetworkExchangesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NetworkExchangeEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[0], Browser_StreamNetworkExchanges_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamNetworkExchangesRequest, NetworkExchangeEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamNetworkExchangesClient = grpc.ServerStreamingClient[NetworkExchangeEvent]
+
 func (c *browserClient) GetCookies(ctx context.Context, in *GetCookiesRequest, opts ...grpc.CallOption) (*GetCookiesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCookiesResponse)
@@ -486,6 +566,85 @@ func (c *browserClient) HighlightNode(ctx context.Context, in *HighlightNodeRequ
 	}
 	return out, nil
 }
+
+func (c *browserClient) StartDomMirror(ctx context.Context, in *StartDomMirrorRequest, opts ...grpc.CallOption) (*StartDomMirrorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartDomMirrorResponse)
+	err := c.cc.Invoke(ctx, Browser_StartDomMirror_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Browser_StopDomMirror_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) GetDomChildren(ctx context.Context, in *GetDomChildrenRequest, opts ...grpc.CallOption) (*GetDomChildrenResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDomChildrenResponse)
+	err := c.cc.Invoke(ctx, Browser_GetDomChildren_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Browser_ReleaseDomSubtree_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) RevealDomNode(ctx context.Context, in *RevealDomNodeRequest, opts ...grpc.CallOption) (*RevealDomNodeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevealDomNodeResponse)
+	err := c.cc.Invoke(ctx, Browser_RevealDomNode_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) GetDomRevision(ctx context.Context, in *GetDomRevisionRequest, opts ...grpc.CallOption) (*GetDomRevisionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDomRevisionResponse)
+	err := c.cc.Invoke(ctx, Browser_GetDomRevision_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StreamDomEvents(ctx context.Context, in *StreamDomEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DomEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[1], Browser_StreamDomEvents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamDomEventsRequest, DomEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamDomEventsClient = grpc.ServerStreamingClient[DomEvent]
 
 func (c *browserClient) Screenshot(ctx context.Context, in *ScreenshotRequest, opts ...grpc.CallOption) (*ScreenshotResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -631,6 +790,13 @@ type BrowserServer interface {
 	WaitForAnyRequest(context.Context, *WaitForAnyRequestRequest) (*WaitForAnyRequestResponse, error)
 	WaitForAnyResponse(context.Context, *WaitForAnyResponseRequest) (*WaitForAnyResponseResponse, error)
 	ModifyRequest(context.Context, *ModifyRequestRequest) (*ModifyRequestResponse, error)
+	// Network capture — every matching request in the session, reported as it
+	// completes. Start/Stop are session state; the stream is a separate
+	// subscription, so a capture survives a reader reconnect and two readers
+	// can watch one capture.
+	StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*emptypb.Empty, error)
+	StopNetworkCapture(context.Context, *StopNetworkCaptureRequest) (*StopNetworkCaptureResponse, error)
+	StreamNetworkExchanges(*StreamNetworkExchangesRequest, grpc.ServerStreamingServer[NetworkExchangeEvent]) error
 	// Cookies
 	GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error)
 	SetCookies(context.Context, *SetCookiesRequest) (*emptypb.Empty, error)
@@ -648,6 +814,30 @@ type BrowserServer interface {
 	GetObservation(context.Context, *GetObservationRequest) (*GetObservationResponse, error)
 	InspectAtPosition(context.Context, *InspectAtPositionRequest) (*InspectAtPositionResponse, error)
 	HighlightNode(context.Context, *HighlightNodeRequest) (*emptypb.Empty, error)
+	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
+	// StartDomMirror returns the top of the main document and from then on the
+	// browser reports changes to the part the client has actually expanded; the
+	// reads grow and shrink that part. Together they replace polling GetDOMHash
+	// and re-fetching GetDOM.
+	//
+	// An <iframe> is an ordinary element whose one child is the document it
+	// hosts, fetched by expanding it — which is also what starts mirroring that
+	// frame, so frames cost nothing until someone opens one. There is no frame
+	// lifecycle to subscribe to. RevealDomNode reaches into a frame nobody
+	// opened and starts the ones on the way, which is what makes a hit test
+	// usable against a lazily loaded tree.
+	//
+	// Like network capture, the stream is a separate subscription so a mirror
+	// survives a reader reconnect. Unlike it, the stream carries both updates
+	// and resyncs on ONE channel: a resync means "everything you hold is void",
+	// which is only interpretable in order against the batches around it.
+	StartDomMirror(context.Context, *StartDomMirrorRequest) (*StartDomMirrorResponse, error)
+	StopDomMirror(context.Context, *StopDomMirrorRequest) (*emptypb.Empty, error)
+	GetDomChildren(context.Context, *GetDomChildrenRequest) (*GetDomChildrenResponse, error)
+	ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*emptypb.Empty, error)
+	RevealDomNode(context.Context, *RevealDomNodeRequest) (*RevealDomNodeResponse, error)
+	GetDomRevision(context.Context, *GetDomRevisionRequest) (*GetDomRevisionResponse, error)
+	StreamDomEvents(*StreamDomEventsRequest, grpc.ServerStreamingServer[DomEvent]) error
 	// Screenshot / capture
 	Screenshot(context.Context, *ScreenshotRequest) (*ScreenshotResponse, error)
 	ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error)
@@ -740,6 +930,15 @@ func (UnimplementedBrowserServer) WaitForAnyResponse(context.Context, *WaitForAn
 func (UnimplementedBrowserServer) ModifyRequest(context.Context, *ModifyRequestRequest) (*ModifyRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ModifyRequest not implemented")
 }
+func (UnimplementedBrowserServer) StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartNetworkCapture not implemented")
+}
+func (UnimplementedBrowserServer) StopNetworkCapture(context.Context, *StopNetworkCaptureRequest) (*StopNetworkCaptureResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopNetworkCapture not implemented")
+}
+func (UnimplementedBrowserServer) StreamNetworkExchanges(*StreamNetworkExchangesRequest, grpc.ServerStreamingServer[NetworkExchangeEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamNetworkExchanges not implemented")
+}
 func (UnimplementedBrowserServer) GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCookies not implemented")
 }
@@ -778,6 +977,27 @@ func (UnimplementedBrowserServer) InspectAtPosition(context.Context, *InspectAtP
 }
 func (UnimplementedBrowserServer) HighlightNode(context.Context, *HighlightNodeRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HighlightNode not implemented")
+}
+func (UnimplementedBrowserServer) StartDomMirror(context.Context, *StartDomMirrorRequest) (*StartDomMirrorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartDomMirror not implemented")
+}
+func (UnimplementedBrowserServer) StopDomMirror(context.Context, *StopDomMirrorRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopDomMirror not implemented")
+}
+func (UnimplementedBrowserServer) GetDomChildren(context.Context, *GetDomChildrenRequest) (*GetDomChildrenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDomChildren not implemented")
+}
+func (UnimplementedBrowserServer) ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReleaseDomSubtree not implemented")
+}
+func (UnimplementedBrowserServer) RevealDomNode(context.Context, *RevealDomNodeRequest) (*RevealDomNodeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RevealDomNode not implemented")
+}
+func (UnimplementedBrowserServer) GetDomRevision(context.Context, *GetDomRevisionRequest) (*GetDomRevisionResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetDomRevision not implemented")
+}
+func (UnimplementedBrowserServer) StreamDomEvents(*StreamDomEventsRequest, grpc.ServerStreamingServer[DomEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamDomEvents not implemented")
 }
 func (UnimplementedBrowserServer) Screenshot(context.Context, *ScreenshotRequest) (*ScreenshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Screenshot not implemented")
@@ -1211,6 +1431,53 @@ func _Browser_ModifyRequest_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_StartNetworkCapture_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartNetworkCaptureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StartNetworkCapture(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StartNetworkCapture_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StartNetworkCapture(ctx, req.(*StartNetworkCaptureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StopNetworkCapture_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopNetworkCaptureRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StopNetworkCapture(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StopNetworkCapture_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StopNetworkCapture(ctx, req.(*StopNetworkCaptureRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StreamNetworkExchanges_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamNetworkExchangesRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BrowserServer).StreamNetworkExchanges(m, &grpc.GenericServerStream[StreamNetworkExchangesRequest, NetworkExchangeEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamNetworkExchangesServer = grpc.ServerStreamingServer[NetworkExchangeEvent]
+
 func _Browser_GetCookies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetCookiesRequest)
 	if err := dec(in); err != nil {
@@ -1444,6 +1711,125 @@ func _Browser_HighlightNode_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _Browser_StartDomMirror_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartDomMirrorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StartDomMirror(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StartDomMirror_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StartDomMirror(ctx, req.(*StartDomMirrorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StopDomMirror_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopDomMirrorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StopDomMirror(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StopDomMirror_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StopDomMirror(ctx, req.(*StopDomMirrorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_GetDomChildren_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDomChildrenRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetDomChildren(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetDomChildren_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetDomChildren(ctx, req.(*GetDomChildrenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_ReleaseDomSubtree_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReleaseDomSubtreeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).ReleaseDomSubtree(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_ReleaseDomSubtree_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).ReleaseDomSubtree(ctx, req.(*ReleaseDomSubtreeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_RevealDomNode_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevealDomNodeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).RevealDomNode(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_RevealDomNode_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).RevealDomNode(ctx, req.(*RevealDomNodeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_GetDomRevision_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDomRevisionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetDomRevision(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetDomRevision_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetDomRevision(ctx, req.(*GetDomRevisionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StreamDomEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamDomEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BrowserServer).StreamDomEvents(m, &grpc.GenericServerStream[StreamDomEventsRequest, DomEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamDomEventsServer = grpc.ServerStreamingServer[DomEvent]
 
 func _Browser_Screenshot_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ScreenshotRequest)
@@ -1735,6 +2121,14 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Browser_ModifyRequest_Handler,
 		},
 		{
+			MethodName: "StartNetworkCapture",
+			Handler:    _Browser_StartNetworkCapture_Handler,
+		},
+		{
+			MethodName: "StopNetworkCapture",
+			Handler:    _Browser_StopNetworkCapture_Handler,
+		},
+		{
 			MethodName: "GetCookies",
 			Handler:    _Browser_GetCookies_Handler,
 		},
@@ -1787,6 +2181,30 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Browser_HighlightNode_Handler,
 		},
 		{
+			MethodName: "StartDomMirror",
+			Handler:    _Browser_StartDomMirror_Handler,
+		},
+		{
+			MethodName: "StopDomMirror",
+			Handler:    _Browser_StopDomMirror_Handler,
+		},
+		{
+			MethodName: "GetDomChildren",
+			Handler:    _Browser_GetDomChildren_Handler,
+		},
+		{
+			MethodName: "ReleaseDomSubtree",
+			Handler:    _Browser_ReleaseDomSubtree_Handler,
+		},
+		{
+			MethodName: "RevealDomNode",
+			Handler:    _Browser_RevealDomNode_Handler,
+		},
+		{
+			MethodName: "GetDomRevision",
+			Handler:    _Browser_GetDomRevision_Handler,
+		},
+		{
 			MethodName: "Screenshot",
 			Handler:    _Browser_Screenshot_Handler,
 		},
@@ -1831,6 +2249,17 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Browser_StopStream_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamNetworkExchanges",
+			Handler:       _Browser_StreamNetworkExchanges_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamDomEvents",
+			Handler:       _Browser_StreamDomEvents_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "wrc.proto",
 }

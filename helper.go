@@ -86,6 +86,45 @@ func interceptedResponseFromProto(r *generated.InterceptedResponse) *Intercepted
 	}
 }
 
+func networkExchangeFromProto(e *generated.NetworkExchange) NetworkExchange {
+	if e == nil {
+		return NetworkExchange{}
+	}
+	return NetworkExchange{
+		RequestId:     e.RequestId,
+		ChainId:       e.ChainId,
+		RedirectIndex: e.RedirectIndex,
+		FrameId:       e.FrameId,
+		IsOOPIF:       e.IsOopif,
+		ResourceType:  NetworkResourceType(e.ResourceType),
+
+		Method:                e.Method,
+		Url:                   e.Url,
+		InitiatorUrl:          e.InitiatorUrl,
+		RequestHeaders:        headersFromProto(e.RequestHeaders),
+		RequestHeadersAreWire: e.RequestHeadersAreWire,
+		RequestBody:           e.RequestBody,
+		RequestBodyTruncated:  e.RequestBodyTruncated,
+
+		HasResponse:            e.HasResponse,
+		StatusCode:             e.StatusCode,
+		StatusText:             e.StatusText,
+		MimeType:               e.MimeType,
+		Protocol:               e.Protocol,
+		RemoteAddress:          e.RemoteAddress,
+		ServedFrom:             NetworkServedFrom(e.ServedFrom),
+		ResponseHeaders:        headersFromProto(e.ResponseHeaders),
+		ResponseHeadersAreWire: e.ResponseHeadersAreWire,
+		ResponseBody:           e.ResponseBody,
+		ResponseBodyTruncated:  e.ResponseBodyTruncated,
+		ResponseBodyCaptured:   e.ResponseBodyCaptured,
+
+		EncodedDataLength: e.EncodedDataLength,
+
+		Error: e.Error,
+	}
+}
+
 func cookiesFromProto(cs []*generated.CookieParam) []CookieParam {
 	if len(cs) == 0 {
 		return nil
