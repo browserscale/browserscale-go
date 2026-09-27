@@ -27,8 +27,8 @@ type StorageOriginEntry struct {
 // page needs to be open. Only first-party localStorage is included —
 // sessionStorage is per-tab and not covered.
 //
-// @param origin - if non-empty, only this origin is returned
-//   (e.g. "https://example.com"); empty string returns all origins
+// @param origin - if non-empty, only this origin is returned (e.g.
+// "https://example.com"); empty string returns all origins
 //
 // @returns []StorageOriginEntry, one per origin with localStorage data
 //
@@ -89,8 +89,8 @@ func (c *CloudBrowser) SetStorage(ctx context.Context, storage []StorageOriginEn
 
 // ClearStorage deletes localStorage in the browser context.
 //
-// @param origin - if non-empty, only this origin's storage is deleted
-//   (e.g. "https://example.com"); empty string deletes all origins
+// @param origin - if non-empty, only this origin's storage is deleted (e.g.
+// "https://example.com"); empty string deletes all origins
 //
 // @throws UNKNOWN_ERROR - the storage could not be cleared
 //

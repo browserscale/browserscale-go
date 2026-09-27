@@ -9241,6 +9241,863 @@ func (*StopStreamResponse) Descriptor() ([]byte, []int) {
 	return file_wrc_proto_rawDescGZIP(), []int{122}
 }
 
+// One console line a script printed.
+type ScriptLogEntry struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// "info", "warning" or "error", from console.log / .warn / .error.
+	Level string `protobuf:"bytes,1,opt,name=level,proto3" json:"level,omitempty"`
+	// The arguments, already stringified the way console does it.
+	Message string `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	// Unix milliseconds, stamped where the script printed rather than where the
+	// line was received, so the log stays ordered across a reconnect.
+	Timestamp     int64 `protobuf:"varint,3,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScriptLogEntry) Reset() {
+	*x = ScriptLogEntry{}
+	mi := &file_wrc_proto_msgTypes[123]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScriptLogEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScriptLogEntry) ProtoMessage() {}
+
+func (x *ScriptLogEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[123]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScriptLogEntry.ProtoReflect.Descriptor instead.
+func (*ScriptLogEntry) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{123}
+}
+
+func (x *ScriptLogEntry) GetLevel() string {
+	if x != nil {
+		return x.Level
+	}
+	return ""
+}
+
+func (x *ScriptLogEntry) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+func (x *ScriptLogEntry) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+type RunScriptRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey    string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// JavaScript source. Runs with `browser` bound to the session, so the script
+	// needs no setup of its own.
+	Source        string `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunScriptRequest) Reset() {
+	*x = RunScriptRequest{}
+	mi := &file_wrc_proto_msgTypes[124]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunScriptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunScriptRequest) ProtoMessage() {}
+
+func (x *RunScriptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[124]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunScriptRequest.ProtoReflect.Descriptor instead.
+func (*RunScriptRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{124}
+}
+
+func (x *RunScriptRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *RunScriptRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *RunScriptRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+// There is deliberately no timeout on RunScript. A deadline is only useful if
+// it can cancel, and cancelling needs the run id — which this call does not
+// learn until the reply it is waiting for. A caller who needs a bound uses
+// StartScript, which hands the id over first, and StopScripts when the bound is
+// hit. A caller who just wants out can StopScripts with no id.
+type RunScriptResponse struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Success bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	// The script's return value as JSON, "undefined" when it returned nothing,
+	// or the error message when success is false.
+	Result string `protobuf:"bytes,2,opt,name=result,proto3" json:"result,omitempty"`
+	// The run's id. Arrives too late to follow the run, but names it for a caller
+	// that wants to match up log lines it already saw on the stream.
+	RunId string `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	// Everything the script logged, in order — whether or not anyone subscribed.
+	Log []*ScriptLogEntry `protobuf:"bytes,4,rep,name=log,proto3" json:"log,omitempty"`
+	// True when the script printed more than the reply holds, in which case log
+	// is the tail of the output rather than all of it.
+	Truncated     bool `protobuf:"varint,5,opt,name=truncated,proto3" json:"truncated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunScriptResponse) Reset() {
+	*x = RunScriptResponse{}
+	mi := &file_wrc_proto_msgTypes[125]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunScriptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunScriptResponse) ProtoMessage() {}
+
+func (x *RunScriptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[125]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunScriptResponse.ProtoReflect.Descriptor instead.
+func (*RunScriptResponse) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{125}
+}
+
+func (x *RunScriptResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *RunScriptResponse) GetResult() string {
+	if x != nil {
+		return x.Result
+	}
+	return ""
+}
+
+func (x *RunScriptResponse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *RunScriptResponse) GetLog() []*ScriptLogEntry {
+	if x != nil {
+		return x.Log
+	}
+	return nil
+}
+
+func (x *RunScriptResponse) GetTruncated() bool {
+	if x != nil {
+		return x.Truncated
+	}
+	return false
+}
+
+type StartScriptRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	Source        string                 `protobuf:"bytes,3,opt,name=source,proto3" json:"source,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartScriptRequest) Reset() {
+	*x = StartScriptRequest{}
+	mi := &file_wrc_proto_msgTypes[126]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartScriptRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartScriptRequest) ProtoMessage() {}
+
+func (x *StartScriptRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[126]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartScriptRequest.ProtoReflect.Descriptor instead.
+func (*StartScriptRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{126}
+}
+
+func (x *StartScriptRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *StartScriptRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *StartScriptRequest) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+type StartScriptResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Identifies the run for StopScripts, ListScriptRuns and the event stream.
+	RunId         string `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartScriptResponse) Reset() {
+	*x = StartScriptResponse{}
+	mi := &file_wrc_proto_msgTypes[127]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartScriptResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartScriptResponse) ProtoMessage() {}
+
+func (x *StartScriptResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[127]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartScriptResponse.ProtoReflect.Descriptor instead.
+func (*StartScriptResponse) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{127}
+}
+
+func (x *StartScriptResponse) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type StopScriptsRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey    string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// The run to cancel. Empty cancels every run in this session — the
+	// distinction is deliberately explicit, because there is no undo for either.
+	RunId         string `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopScriptsRequest) Reset() {
+	*x = StopScriptsRequest{}
+	mi := &file_wrc_proto_msgTypes[128]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopScriptsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopScriptsRequest) ProtoMessage() {}
+
+func (x *StopScriptsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[128]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopScriptsRequest.ProtoReflect.Descriptor instead.
+func (*StopScriptsRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{128}
+}
+
+func (x *StopScriptsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *StopScriptsRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *StopScriptsRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type StopScriptsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stopped       int32                  `protobuf:"varint,1,opt,name=stopped,proto3" json:"stopped,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StopScriptsResponse) Reset() {
+	*x = StopScriptsResponse{}
+	mi := &file_wrc_proto_msgTypes[129]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StopScriptsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StopScriptsResponse) ProtoMessage() {}
+
+func (x *StopScriptsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[129]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StopScriptsResponse.ProtoReflect.Descriptor instead.
+func (*StopScriptsResponse) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{129}
+}
+
+func (x *StopScriptsResponse) GetStopped() int32 {
+	if x != nil {
+		return x.Stopped
+	}
+	return 0
+}
+
+type ScriptRun struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	RunId string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	// How long the run has been going, in ms. Reported as an age rather than a
+	// start time because that is what the browser knows — it counts from when the
+	// run was accepted, with no clock shared with the caller.
+	RunningMs     int64 `protobuf:"varint,2,opt,name=running_ms,json=runningMs,proto3" json:"running_ms,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScriptRun) Reset() {
+	*x = ScriptRun{}
+	mi := &file_wrc_proto_msgTypes[130]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScriptRun) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScriptRun) ProtoMessage() {}
+
+func (x *ScriptRun) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[130]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScriptRun.ProtoReflect.Descriptor instead.
+func (*ScriptRun) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{130}
+}
+
+func (x *ScriptRun) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ScriptRun) GetRunningMs() int64 {
+	if x != nil {
+		return x.RunningMs
+	}
+	return 0
+}
+
+type ListScriptRunsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey        string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListScriptRunsRequest) Reset() {
+	*x = ListScriptRunsRequest{}
+	mi := &file_wrc_proto_msgTypes[131]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListScriptRunsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListScriptRunsRequest) ProtoMessage() {}
+
+func (x *ListScriptRunsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[131]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListScriptRunsRequest.ProtoReflect.Descriptor instead.
+func (*ListScriptRunsRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{131}
+}
+
+func (x *ListScriptRunsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *ListScriptRunsRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+type ListScriptRunsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Only runs still executing. A finished run is reported once on the event
+	// stream and then forgotten; this is not a history.
+	Runs          []*ScriptRun `protobuf:"bytes,1,rep,name=runs,proto3" json:"runs,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListScriptRunsResponse) Reset() {
+	*x = ListScriptRunsResponse{}
+	mi := &file_wrc_proto_msgTypes[132]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListScriptRunsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListScriptRunsResponse) ProtoMessage() {}
+
+func (x *ListScriptRunsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[132]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListScriptRunsResponse.ProtoReflect.Descriptor instead.
+func (*ListScriptRunsResponse) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{132}
+}
+
+func (x *ListScriptRunsResponse) GetRuns() []*ScriptRun {
+	if x != nil {
+		return x.Runs
+	}
+	return nil
+}
+
+type StreamScriptEventsRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	ApiKey    string                 `protobuf:"bytes,2,opt,name=api_key,json=apiKey,proto3" json:"api_key,omitempty"`
+	// Report only this run. Empty reports every run in the session, which is what
+	// a dashboard wants and what a single follower does not.
+	RunId         string `protobuf:"bytes,3,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StreamScriptEventsRequest) Reset() {
+	*x = StreamScriptEventsRequest{}
+	mi := &file_wrc_proto_msgTypes[133]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StreamScriptEventsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StreamScriptEventsRequest) ProtoMessage() {}
+
+func (x *StreamScriptEventsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[133]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StreamScriptEventsRequest.ProtoReflect.Descriptor instead.
+func (*StreamScriptEventsRequest) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{133}
+}
+
+func (x *StreamScriptEventsRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *StreamScriptEventsRequest) GetApiKey() string {
+	if x != nil {
+		return x.ApiKey
+	}
+	return ""
+}
+
+func (x *StreamScriptEventsRequest) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+type ScriptLog struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RunId         string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Line          *ScriptLogEntry        `protobuf:"bytes,2,opt,name=line,proto3" json:"line,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScriptLog) Reset() {
+	*x = ScriptLog{}
+	mi := &file_wrc_proto_msgTypes[134]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScriptLog) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScriptLog) ProtoMessage() {}
+
+func (x *ScriptLog) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[134]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScriptLog.ProtoReflect.Descriptor instead.
+func (*ScriptLog) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{134}
+}
+
+func (x *ScriptLog) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ScriptLog) GetLine() *ScriptLogEntry {
+	if x != nil {
+		return x.Line
+	}
+	return nil
+}
+
+type ScriptFinished struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	RunId   string                 `protobuf:"bytes,1,opt,name=run_id,json=runId,proto3" json:"run_id,omitempty"`
+	Success bool                   `protobuf:"varint,2,opt,name=success,proto3" json:"success,omitempty"`
+	// The return value as JSON, or the error message when success is false — the
+	// same one field as in RunScriptResponse.
+	Result string `protobuf:"bytes,3,opt,name=result,proto3" json:"result,omitempty"`
+	// True when the run ended because StopScripts cancelled it, or because the VM
+	// was torn down under it, rather than on its own.
+	Stopped       bool `protobuf:"varint,4,opt,name=stopped,proto3" json:"stopped,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScriptFinished) Reset() {
+	*x = ScriptFinished{}
+	mi := &file_wrc_proto_msgTypes[135]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScriptFinished) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScriptFinished) ProtoMessage() {}
+
+func (x *ScriptFinished) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[135]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScriptFinished.ProtoReflect.Descriptor instead.
+func (*ScriptFinished) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{135}
+}
+
+func (x *ScriptFinished) GetRunId() string {
+	if x != nil {
+		return x.RunId
+	}
+	return ""
+}
+
+func (x *ScriptFinished) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *ScriptFinished) GetResult() string {
+	if x != nil {
+		return x.Result
+	}
+	return ""
+}
+
+func (x *ScriptFinished) GetStopped() bool {
+	if x != nil {
+		return x.Stopped
+	}
+	return false
+}
+
+type ScriptEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*ScriptEvent_Log
+	//	*ScriptEvent_Finished
+	Event isScriptEvent_Event `protobuf_oneof:"event"`
+	// Cumulative events dropped for this subscriber because it read slower than
+	// the scripts produced them. Non-zero means the log has holes.
+	Dropped       uint64 `protobuf:"varint,3,opt,name=dropped,proto3" json:"dropped,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScriptEvent) Reset() {
+	*x = ScriptEvent{}
+	mi := &file_wrc_proto_msgTypes[136]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScriptEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScriptEvent) ProtoMessage() {}
+
+func (x *ScriptEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_wrc_proto_msgTypes[136]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScriptEvent.ProtoReflect.Descriptor instead.
+func (*ScriptEvent) Descriptor() ([]byte, []int) {
+	return file_wrc_proto_rawDescGZIP(), []int{136}
+}
+
+func (x *ScriptEvent) GetEvent() isScriptEvent_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *ScriptEvent) GetLog() *ScriptLog {
+	if x != nil {
+		if x, ok := x.Event.(*ScriptEvent_Log); ok {
+			return x.Log
+		}
+	}
+	return nil
+}
+
+func (x *ScriptEvent) GetFinished() *ScriptFinished {
+	if x != nil {
+		if x, ok := x.Event.(*ScriptEvent_Finished); ok {
+			return x.Finished
+		}
+	}
+	return nil
+}
+
+func (x *ScriptEvent) GetDropped() uint64 {
+	if x != nil {
+		return x.Dropped
+	}
+	return 0
+}
+
+type isScriptEvent_Event interface {
+	isScriptEvent_Event()
+}
+
+type ScriptEvent_Log struct {
+	Log *ScriptLog `protobuf:"bytes,1,opt,name=log,proto3,oneof"`
+}
+
+type ScriptEvent_Finished struct {
+	Finished *ScriptFinished `protobuf:"bytes,2,opt,name=finished,proto3,oneof"`
+}
+
+func (*ScriptEvent_Log) isScriptEvent_Event() {}
+
+func (*ScriptEvent_Finished) isScriptEvent_Event() {}
+
 var File_wrc_proto protoreflect.FileDescriptor
 
 const file_wrc_proto_rawDesc = "" +
@@ -10236,7 +11093,64 @@ const file_wrc_proto_rawDesc = "" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
 	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"\x14\n" +
-	"\x12StopStreamResponse2\xfe$\n" +
+	"\x12StopStreamResponse\"^\n" +
+	"\x0eScriptLogEntry\x12\x14\n" +
+	"\x05level\x18\x01 \x01(\tR\x05level\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
+	"\ttimestamp\x18\x03 \x01(\x03R\ttimestamp\"b\n" +
+	"\x10RunScriptRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\"\xad\x01\n" +
+	"\x11RunScriptResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06result\x18\x02 \x01(\tR\x06result\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\x121\n" +
+	"\x03log\x18\x04 \x03(\v2\x1f.browserscale.v1.ScriptLogEntryR\x03log\x12\x1c\n" +
+	"\ttruncated\x18\x05 \x01(\bR\ttruncated\"d\n" +
+	"\x12StartScriptRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x16\n" +
+	"\x06source\x18\x03 \x01(\tR\x06source\",\n" +
+	"\x13StartScriptResponse\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\"c\n" +
+	"\x12StopScriptsRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\"/\n" +
+	"\x13StopScriptsResponse\x12\x18\n" +
+	"\astopped\x18\x01 \x01(\x05R\astopped\"A\n" +
+	"\tScriptRun\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x1d\n" +
+	"\n" +
+	"running_ms\x18\x02 \x01(\x03R\trunningMs\"O\n" +
+	"\x15ListScriptRunsRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\"H\n" +
+	"\x16ListScriptRunsResponse\x12.\n" +
+	"\x04runs\x18\x01 \x03(\v2\x1a.browserscale.v1.ScriptRunR\x04runs\"j\n" +
+	"\x19StreamScriptEventsRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
+	"\aapi_key\x18\x02 \x01(\tR\x06apiKey\x12\x15\n" +
+	"\x06run_id\x18\x03 \x01(\tR\x05runId\"W\n" +
+	"\tScriptLog\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x123\n" +
+	"\x04line\x18\x02 \x01(\v2\x1f.browserscale.v1.ScriptLogEntryR\x04line\"s\n" +
+	"\x0eScriptFinished\x12\x15\n" +
+	"\x06run_id\x18\x01 \x01(\tR\x05runId\x12\x18\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\x12\x16\n" +
+	"\x06result\x18\x03 \x01(\tR\x06result\x12\x18\n" +
+	"\astopped\x18\x04 \x01(\bR\astopped\"\x9f\x01\n" +
+	"\vScriptEvent\x12.\n" +
+	"\x03log\x18\x01 \x01(\v2\x1a.browserscale.v1.ScriptLogH\x00R\x03log\x12=\n" +
+	"\bfinished\x18\x02 \x01(\v2\x1f.browserscale.v1.ScriptFinishedH\x00R\bfinished\x12\x18\n" +
+	"\adropped\x18\x03 \x01(\x04R\adroppedB\a\n" +
+	"\x05event2\xcb(\n" +
 	"\aBrowser\x12D\n" +
 	"\bSetProxy\x12 .browserscale.v1.SetProxyRequest\x1a\x16.google.protobuf.Empty\x12O\n" +
 	"\bGetPages\x12 .browserscale.v1.GetPagesRequest\x1a!.browserscale.v1.GetPagesResponse\x12O\n" +
@@ -10303,7 +11217,12 @@ const file_wrc_proto_rawDesc = "" +
 	"\x0fGetStreamConfig\x12'.browserscale.v1.GetStreamConfigRequest\x1a(.browserscale.v1.GetStreamConfigResponse\x12X\n" +
 	"\vStartStream\x12#.browserscale.v1.StartStreamRequest\x1a$.browserscale.v1.StartStreamResponse\x12U\n" +
 	"\n" +
-	"StopStream\x12\".browserscale.v1.StopStreamRequest\x1a#.browserscale.v1.StopStreamResponseB3Z1github.com/browserscale/browserscale-go/generatedb\x06proto3"
+	"StopStream\x12\".browserscale.v1.StopStreamRequest\x1a#.browserscale.v1.StopStreamResponse\x12R\n" +
+	"\tRunScript\x12!.browserscale.v1.RunScriptRequest\x1a\".browserscale.v1.RunScriptResponse\x12X\n" +
+	"\vStartScript\x12#.browserscale.v1.StartScriptRequest\x1a$.browserscale.v1.StartScriptResponse\x12X\n" +
+	"\vStopScripts\x12#.browserscale.v1.StopScriptsRequest\x1a$.browserscale.v1.StopScriptsResponse\x12a\n" +
+	"\x0eListScriptRuns\x12&.browserscale.v1.ListScriptRunsRequest\x1a'.browserscale.v1.ListScriptRunsResponse\x12`\n" +
+	"\x12StreamScriptEvents\x12*.browserscale.v1.StreamScriptEventsRequest\x1a\x1c.browserscale.v1.ScriptEvent0\x01B3Z1github.com/browserscale/browserscale-go/generatedb\x06proto3"
 
 var (
 	file_wrc_proto_rawDescOnce sync.Once
@@ -10317,7 +11236,7 @@ func file_wrc_proto_rawDescGZIP() []byte {
 	return file_wrc_proto_rawDescData
 }
 
-var file_wrc_proto_msgTypes = make([]protoimpl.MessageInfo, 123)
+var file_wrc_proto_msgTypes = make([]protoimpl.MessageInfo, 137)
 var file_wrc_proto_goTypes = []any{
 	(*Rect)(nil),                          // 0: browserscale.v1.Rect
 	(*FrameInfo)(nil),                     // 1: browserscale.v1.FrameInfo
@@ -10442,7 +11361,21 @@ var file_wrc_proto_goTypes = []any{
 	(*StartStreamResponse)(nil),           // 120: browserscale.v1.StartStreamResponse
 	(*StopStreamRequest)(nil),             // 121: browserscale.v1.StopStreamRequest
 	(*StopStreamResponse)(nil),            // 122: browserscale.v1.StopStreamResponse
-	(*emptypb.Empty)(nil),                 // 123: google.protobuf.Empty
+	(*ScriptLogEntry)(nil),                // 123: browserscale.v1.ScriptLogEntry
+	(*RunScriptRequest)(nil),              // 124: browserscale.v1.RunScriptRequest
+	(*RunScriptResponse)(nil),             // 125: browserscale.v1.RunScriptResponse
+	(*StartScriptRequest)(nil),            // 126: browserscale.v1.StartScriptRequest
+	(*StartScriptResponse)(nil),           // 127: browserscale.v1.StartScriptResponse
+	(*StopScriptsRequest)(nil),            // 128: browserscale.v1.StopScriptsRequest
+	(*StopScriptsResponse)(nil),           // 129: browserscale.v1.StopScriptsResponse
+	(*ScriptRun)(nil),                     // 130: browserscale.v1.ScriptRun
+	(*ListScriptRunsRequest)(nil),         // 131: browserscale.v1.ListScriptRunsRequest
+	(*ListScriptRunsResponse)(nil),        // 132: browserscale.v1.ListScriptRunsResponse
+	(*StreamScriptEventsRequest)(nil),     // 133: browserscale.v1.StreamScriptEventsRequest
+	(*ScriptLog)(nil),                     // 134: browserscale.v1.ScriptLog
+	(*ScriptFinished)(nil),                // 135: browserscale.v1.ScriptFinished
+	(*ScriptEvent)(nil),                   // 136: browserscale.v1.ScriptEvent
+	(*emptypb.Empty)(nil),                 // 137: google.protobuf.Empty
 }
 var file_wrc_proto_depIdxs = []int32{
 	0,   // 0: browserscale.v1.FrameInfo.absolute_rect:type_name -> browserscale.v1.Rect
@@ -10498,121 +11431,136 @@ var file_wrc_proto_depIdxs = []int32{
 	0,   // 50: browserscale.v1.InspectAtPositionResponse.bounds:type_name -> browserscale.v1.Rect
 	116, // 51: browserscale.v1.GetStreamConfigResponse.ice_servers:type_name -> browserscale.v1.IceServer
 	0,   // 52: browserscale.v1.StartStreamResponse.viewport:type_name -> browserscale.v1.Rect
-	35,  // 53: browserscale.v1.Browser.SetProxy:input_type -> browserscale.v1.SetProxyRequest
-	36,  // 54: browserscale.v1.Browser.GetPages:input_type -> browserscale.v1.GetPagesRequest
-	38,  // 55: browserscale.v1.Browser.Navigate:input_type -> browserscale.v1.NavigateRequest
-	40,  // 56: browserscale.v1.Browser.LoadHTML:input_type -> browserscale.v1.LoadHTMLRequest
-	41,  // 57: browserscale.v1.Browser.Evaluate:input_type -> browserscale.v1.EvaluateRequest
-	43,  // 58: browserscale.v1.Browser.Run:input_type -> browserscale.v1.RunRequest
-	45,  // 59: browserscale.v1.Browser.WaitForAny:input_type -> browserscale.v1.WaitForAnyParams
-	46,  // 60: browserscale.v1.Browser.SelectOption:input_type -> browserscale.v1.SelectOptionRequest
-	47,  // 61: browserscale.v1.Browser.ScrollTo:input_type -> browserscale.v1.ScrollToRequest
-	48,  // 62: browserscale.v1.Browser.MoveTo:input_type -> browserscale.v1.MoveToRequest
-	49,  // 63: browserscale.v1.Browser.Click:input_type -> browserscale.v1.ClickRequest
-	50,  // 64: browserscale.v1.Browser.Drag:input_type -> browserscale.v1.DragRequest
-	51,  // 65: browserscale.v1.Browser.Fill:input_type -> browserscale.v1.FillRequest
-	18,  // 66: browserscale.v1.Browser.AddReaction:input_type -> browserscale.v1.AddReactionRequest
-	20,  // 67: browserscale.v1.Browser.RemoveReaction:input_type -> browserscale.v1.RemoveReactionRequest
-	22,  // 68: browserscale.v1.Browser.ListReactions:input_type -> browserscale.v1.ListReactionsRequest
-	52,  // 69: browserscale.v1.Browser.SetBlockList:input_type -> browserscale.v1.SetBlockListRequest
-	53,  // 70: browserscale.v1.Browser.SetStaticPaths:input_type -> browserscale.v1.SetStaticPathsRequest
-	54,  // 71: browserscale.v1.Browser.WaitForAnyRequest:input_type -> browserscale.v1.WaitForAnyRequestRequest
-	56,  // 72: browserscale.v1.Browser.WaitForAnyResponse:input_type -> browserscale.v1.WaitForAnyResponseRequest
-	58,  // 73: browserscale.v1.Browser.ModifyRequest:input_type -> browserscale.v1.ModifyRequestRequest
-	60,  // 74: browserscale.v1.Browser.StartNetworkCapture:input_type -> browserscale.v1.StartNetworkCaptureRequest
-	61,  // 75: browserscale.v1.Browser.StopNetworkCapture:input_type -> browserscale.v1.StopNetworkCaptureRequest
-	63,  // 76: browserscale.v1.Browser.StreamNetworkExchanges:input_type -> browserscale.v1.StreamNetworkExchangesRequest
-	66,  // 77: browserscale.v1.Browser.GetCookies:input_type -> browserscale.v1.GetCookiesRequest
-	68,  // 78: browserscale.v1.Browser.SetCookies:input_type -> browserscale.v1.SetCookiesRequest
-	69,  // 79: browserscale.v1.Browser.ClearCookies:input_type -> browserscale.v1.ClearCookiesRequest
-	72,  // 80: browserscale.v1.Browser.GetStorage:input_type -> browserscale.v1.GetStorageRequest
-	74,  // 81: browserscale.v1.Browser.SetStorage:input_type -> browserscale.v1.SetStorageRequest
-	75,  // 82: browserscale.v1.Browser.ClearStorage:input_type -> browserscale.v1.ClearStorageRequest
-	78,  // 83: browserscale.v1.Browser.GetAuthSession:input_type -> browserscale.v1.GetAuthSessionRequest
-	80,  // 84: browserscale.v1.Browser.SetAuthSession:input_type -> browserscale.v1.SetAuthSessionRequest
-	81,  // 85: browserscale.v1.Browser.GetDOM:input_type -> browserscale.v1.GetDOMRequest
-	85,  // 86: browserscale.v1.Browser.GetDOMHash:input_type -> browserscale.v1.GetDOMHashRequest
-	83,  // 87: browserscale.v1.Browser.GetObservation:input_type -> browserscale.v1.GetObservationRequest
-	101, // 88: browserscale.v1.Browser.InspectAtPosition:input_type -> browserscale.v1.InspectAtPositionRequest
-	103, // 89: browserscale.v1.Browser.HighlightNode:input_type -> browserscale.v1.HighlightNodeRequest
-	87,  // 90: browserscale.v1.Browser.StartDomMirror:input_type -> browserscale.v1.StartDomMirrorRequest
-	89,  // 91: browserscale.v1.Browser.StopDomMirror:input_type -> browserscale.v1.StopDomMirrorRequest
-	90,  // 92: browserscale.v1.Browser.GetDomChildren:input_type -> browserscale.v1.GetDomChildrenRequest
-	92,  // 93: browserscale.v1.Browser.ReleaseDomSubtree:input_type -> browserscale.v1.ReleaseDomSubtreeRequest
-	93,  // 94: browserscale.v1.Browser.RevealDomNode:input_type -> browserscale.v1.RevealDomNodeRequest
-	95,  // 95: browserscale.v1.Browser.GetDomRevision:input_type -> browserscale.v1.GetDomRevisionRequest
-	97,  // 96: browserscale.v1.Browser.StreamDomEvents:input_type -> browserscale.v1.StreamDomEventsRequest
-	110, // 97: browserscale.v1.Browser.Screenshot:input_type -> browserscale.v1.ScreenshotRequest
-	112, // 98: browserscale.v1.Browser.ReadCanvas:input_type -> browserscale.v1.ReadCanvasRequest
-	104, // 99: browserscale.v1.Browser.InsertText:input_type -> browserscale.v1.InsertTextRequest
-	105, // 100: browserscale.v1.Browser.Type:input_type -> browserscale.v1.TypeRequest
-	106, // 101: browserscale.v1.Browser.PressKey:input_type -> browserscale.v1.PressKeyRequest
-	107, // 102: browserscale.v1.Browser.ReleaseKey:input_type -> browserscale.v1.ReleaseKeyRequest
-	108, // 103: browserscale.v1.Browser.GetSelection:input_type -> browserscale.v1.GetSelectionRequest
-	114, // 104: browserscale.v1.Browser.SolveCaptcha:input_type -> browserscale.v1.SolveCaptchaRequest
-	117, // 105: browserscale.v1.Browser.GetStreamConfig:input_type -> browserscale.v1.GetStreamConfigRequest
-	119, // 106: browserscale.v1.Browser.StartStream:input_type -> browserscale.v1.StartStreamRequest
-	121, // 107: browserscale.v1.Browser.StopStream:input_type -> browserscale.v1.StopStreamRequest
-	123, // 108: browserscale.v1.Browser.SetProxy:output_type -> google.protobuf.Empty
-	37,  // 109: browserscale.v1.Browser.GetPages:output_type -> browserscale.v1.GetPagesResponse
-	39,  // 110: browserscale.v1.Browser.Navigate:output_type -> browserscale.v1.NavigateResponse
-	123, // 111: browserscale.v1.Browser.LoadHTML:output_type -> google.protobuf.Empty
-	42,  // 112: browserscale.v1.Browser.Evaluate:output_type -> browserscale.v1.EvaluateResponse
-	44,  // 113: browserscale.v1.Browser.Run:output_type -> browserscale.v1.RunResponse
-	10,  // 114: browserscale.v1.Browser.WaitForAny:output_type -> browserscale.v1.WaitResult
-	29,  // 115: browserscale.v1.Browser.SelectOption:output_type -> browserscale.v1.SelectOptionResult
-	31,  // 116: browserscale.v1.Browser.ScrollTo:output_type -> browserscale.v1.ScrollResult
-	33,  // 117: browserscale.v1.Browser.MoveTo:output_type -> browserscale.v1.MoveResult
-	16,  // 118: browserscale.v1.Browser.Click:output_type -> browserscale.v1.ClickResult
-	27,  // 119: browserscale.v1.Browser.Drag:output_type -> browserscale.v1.DragResult
-	26,  // 120: browserscale.v1.Browser.Fill:output_type -> browserscale.v1.FillResult
-	19,  // 121: browserscale.v1.Browser.AddReaction:output_type -> browserscale.v1.AddReactionResponse
-	21,  // 122: browserscale.v1.Browser.RemoveReaction:output_type -> browserscale.v1.RemoveReactionResponse
-	23,  // 123: browserscale.v1.Browser.ListReactions:output_type -> browserscale.v1.ListReactionsResponse
-	123, // 124: browserscale.v1.Browser.SetBlockList:output_type -> google.protobuf.Empty
-	123, // 125: browserscale.v1.Browser.SetStaticPaths:output_type -> google.protobuf.Empty
-	55,  // 126: browserscale.v1.Browser.WaitForAnyRequest:output_type -> browserscale.v1.WaitForAnyRequestResponse
-	57,  // 127: browserscale.v1.Browser.WaitForAnyResponse:output_type -> browserscale.v1.WaitForAnyResponseResponse
-	59,  // 128: browserscale.v1.Browser.ModifyRequest:output_type -> browserscale.v1.ModifyRequestResponse
-	123, // 129: browserscale.v1.Browser.StartNetworkCapture:output_type -> google.protobuf.Empty
-	62,  // 130: browserscale.v1.Browser.StopNetworkCapture:output_type -> browserscale.v1.StopNetworkCaptureResponse
-	64,  // 131: browserscale.v1.Browser.StreamNetworkExchanges:output_type -> browserscale.v1.NetworkExchangeEvent
-	67,  // 132: browserscale.v1.Browser.GetCookies:output_type -> browserscale.v1.GetCookiesResponse
-	123, // 133: browserscale.v1.Browser.SetCookies:output_type -> google.protobuf.Empty
-	123, // 134: browserscale.v1.Browser.ClearCookies:output_type -> google.protobuf.Empty
-	73,  // 135: browserscale.v1.Browser.GetStorage:output_type -> browserscale.v1.GetStorageResponse
-	123, // 136: browserscale.v1.Browser.SetStorage:output_type -> google.protobuf.Empty
-	123, // 137: browserscale.v1.Browser.ClearStorage:output_type -> google.protobuf.Empty
-	79,  // 138: browserscale.v1.Browser.GetAuthSession:output_type -> browserscale.v1.GetAuthSessionResponse
-	123, // 139: browserscale.v1.Browser.SetAuthSession:output_type -> google.protobuf.Empty
-	82,  // 140: browserscale.v1.Browser.GetDOM:output_type -> browserscale.v1.GetDOMResponse
-	86,  // 141: browserscale.v1.Browser.GetDOMHash:output_type -> browserscale.v1.GetDOMHashResponse
-	84,  // 142: browserscale.v1.Browser.GetObservation:output_type -> browserscale.v1.GetObservationResponse
-	102, // 143: browserscale.v1.Browser.InspectAtPosition:output_type -> browserscale.v1.InspectAtPositionResponse
-	123, // 144: browserscale.v1.Browser.HighlightNode:output_type -> google.protobuf.Empty
-	88,  // 145: browserscale.v1.Browser.StartDomMirror:output_type -> browserscale.v1.StartDomMirrorResponse
-	123, // 146: browserscale.v1.Browser.StopDomMirror:output_type -> google.protobuf.Empty
-	91,  // 147: browserscale.v1.Browser.GetDomChildren:output_type -> browserscale.v1.GetDomChildrenResponse
-	123, // 148: browserscale.v1.Browser.ReleaseDomSubtree:output_type -> google.protobuf.Empty
-	94,  // 149: browserscale.v1.Browser.RevealDomNode:output_type -> browserscale.v1.RevealDomNodeResponse
-	96,  // 150: browserscale.v1.Browser.GetDomRevision:output_type -> browserscale.v1.GetDomRevisionResponse
-	100, // 151: browserscale.v1.Browser.StreamDomEvents:output_type -> browserscale.v1.DomEvent
-	111, // 152: browserscale.v1.Browser.Screenshot:output_type -> browserscale.v1.ScreenshotResponse
-	113, // 153: browserscale.v1.Browser.ReadCanvas:output_type -> browserscale.v1.ReadCanvasResponse
-	123, // 154: browserscale.v1.Browser.InsertText:output_type -> google.protobuf.Empty
-	123, // 155: browserscale.v1.Browser.Type:output_type -> google.protobuf.Empty
-	123, // 156: browserscale.v1.Browser.PressKey:output_type -> google.protobuf.Empty
-	123, // 157: browserscale.v1.Browser.ReleaseKey:output_type -> google.protobuf.Empty
-	109, // 158: browserscale.v1.Browser.GetSelection:output_type -> browserscale.v1.GetSelectionResponse
-	115, // 159: browserscale.v1.Browser.SolveCaptcha:output_type -> browserscale.v1.SolveCaptchaResponse
-	118, // 160: browserscale.v1.Browser.GetStreamConfig:output_type -> browserscale.v1.GetStreamConfigResponse
-	120, // 161: browserscale.v1.Browser.StartStream:output_type -> browserscale.v1.StartStreamResponse
-	122, // 162: browserscale.v1.Browser.StopStream:output_type -> browserscale.v1.StopStreamResponse
-	108, // [108:163] is the sub-list for method output_type
-	53,  // [53:108] is the sub-list for method input_type
-	53,  // [53:53] is the sub-list for extension type_name
-	53,  // [53:53] is the sub-list for extension extendee
-	0,   // [0:53] is the sub-list for field type_name
+	123, // 53: browserscale.v1.RunScriptResponse.log:type_name -> browserscale.v1.ScriptLogEntry
+	130, // 54: browserscale.v1.ListScriptRunsResponse.runs:type_name -> browserscale.v1.ScriptRun
+	123, // 55: browserscale.v1.ScriptLog.line:type_name -> browserscale.v1.ScriptLogEntry
+	134, // 56: browserscale.v1.ScriptEvent.log:type_name -> browserscale.v1.ScriptLog
+	135, // 57: browserscale.v1.ScriptEvent.finished:type_name -> browserscale.v1.ScriptFinished
+	35,  // 58: browserscale.v1.Browser.SetProxy:input_type -> browserscale.v1.SetProxyRequest
+	36,  // 59: browserscale.v1.Browser.GetPages:input_type -> browserscale.v1.GetPagesRequest
+	38,  // 60: browserscale.v1.Browser.Navigate:input_type -> browserscale.v1.NavigateRequest
+	40,  // 61: browserscale.v1.Browser.LoadHTML:input_type -> browserscale.v1.LoadHTMLRequest
+	41,  // 62: browserscale.v1.Browser.Evaluate:input_type -> browserscale.v1.EvaluateRequest
+	43,  // 63: browserscale.v1.Browser.Run:input_type -> browserscale.v1.RunRequest
+	45,  // 64: browserscale.v1.Browser.WaitForAny:input_type -> browserscale.v1.WaitForAnyParams
+	46,  // 65: browserscale.v1.Browser.SelectOption:input_type -> browserscale.v1.SelectOptionRequest
+	47,  // 66: browserscale.v1.Browser.ScrollTo:input_type -> browserscale.v1.ScrollToRequest
+	48,  // 67: browserscale.v1.Browser.MoveTo:input_type -> browserscale.v1.MoveToRequest
+	49,  // 68: browserscale.v1.Browser.Click:input_type -> browserscale.v1.ClickRequest
+	50,  // 69: browserscale.v1.Browser.Drag:input_type -> browserscale.v1.DragRequest
+	51,  // 70: browserscale.v1.Browser.Fill:input_type -> browserscale.v1.FillRequest
+	18,  // 71: browserscale.v1.Browser.AddReaction:input_type -> browserscale.v1.AddReactionRequest
+	20,  // 72: browserscale.v1.Browser.RemoveReaction:input_type -> browserscale.v1.RemoveReactionRequest
+	22,  // 73: browserscale.v1.Browser.ListReactions:input_type -> browserscale.v1.ListReactionsRequest
+	52,  // 74: browserscale.v1.Browser.SetBlockList:input_type -> browserscale.v1.SetBlockListRequest
+	53,  // 75: browserscale.v1.Browser.SetStaticPaths:input_type -> browserscale.v1.SetStaticPathsRequest
+	54,  // 76: browserscale.v1.Browser.WaitForAnyRequest:input_type -> browserscale.v1.WaitForAnyRequestRequest
+	56,  // 77: browserscale.v1.Browser.WaitForAnyResponse:input_type -> browserscale.v1.WaitForAnyResponseRequest
+	58,  // 78: browserscale.v1.Browser.ModifyRequest:input_type -> browserscale.v1.ModifyRequestRequest
+	60,  // 79: browserscale.v1.Browser.StartNetworkCapture:input_type -> browserscale.v1.StartNetworkCaptureRequest
+	61,  // 80: browserscale.v1.Browser.StopNetworkCapture:input_type -> browserscale.v1.StopNetworkCaptureRequest
+	63,  // 81: browserscale.v1.Browser.StreamNetworkExchanges:input_type -> browserscale.v1.StreamNetworkExchangesRequest
+	66,  // 82: browserscale.v1.Browser.GetCookies:input_type -> browserscale.v1.GetCookiesRequest
+	68,  // 83: browserscale.v1.Browser.SetCookies:input_type -> browserscale.v1.SetCookiesRequest
+	69,  // 84: browserscale.v1.Browser.ClearCookies:input_type -> browserscale.v1.ClearCookiesRequest
+	72,  // 85: browserscale.v1.Browser.GetStorage:input_type -> browserscale.v1.GetStorageRequest
+	74,  // 86: browserscale.v1.Browser.SetStorage:input_type -> browserscale.v1.SetStorageRequest
+	75,  // 87: browserscale.v1.Browser.ClearStorage:input_type -> browserscale.v1.ClearStorageRequest
+	78,  // 88: browserscale.v1.Browser.GetAuthSession:input_type -> browserscale.v1.GetAuthSessionRequest
+	80,  // 89: browserscale.v1.Browser.SetAuthSession:input_type -> browserscale.v1.SetAuthSessionRequest
+	81,  // 90: browserscale.v1.Browser.GetDOM:input_type -> browserscale.v1.GetDOMRequest
+	85,  // 91: browserscale.v1.Browser.GetDOMHash:input_type -> browserscale.v1.GetDOMHashRequest
+	83,  // 92: browserscale.v1.Browser.GetObservation:input_type -> browserscale.v1.GetObservationRequest
+	101, // 93: browserscale.v1.Browser.InspectAtPosition:input_type -> browserscale.v1.InspectAtPositionRequest
+	103, // 94: browserscale.v1.Browser.HighlightNode:input_type -> browserscale.v1.HighlightNodeRequest
+	87,  // 95: browserscale.v1.Browser.StartDomMirror:input_type -> browserscale.v1.StartDomMirrorRequest
+	89,  // 96: browserscale.v1.Browser.StopDomMirror:input_type -> browserscale.v1.StopDomMirrorRequest
+	90,  // 97: browserscale.v1.Browser.GetDomChildren:input_type -> browserscale.v1.GetDomChildrenRequest
+	92,  // 98: browserscale.v1.Browser.ReleaseDomSubtree:input_type -> browserscale.v1.ReleaseDomSubtreeRequest
+	93,  // 99: browserscale.v1.Browser.RevealDomNode:input_type -> browserscale.v1.RevealDomNodeRequest
+	95,  // 100: browserscale.v1.Browser.GetDomRevision:input_type -> browserscale.v1.GetDomRevisionRequest
+	97,  // 101: browserscale.v1.Browser.StreamDomEvents:input_type -> browserscale.v1.StreamDomEventsRequest
+	110, // 102: browserscale.v1.Browser.Screenshot:input_type -> browserscale.v1.ScreenshotRequest
+	112, // 103: browserscale.v1.Browser.ReadCanvas:input_type -> browserscale.v1.ReadCanvasRequest
+	104, // 104: browserscale.v1.Browser.InsertText:input_type -> browserscale.v1.InsertTextRequest
+	105, // 105: browserscale.v1.Browser.Type:input_type -> browserscale.v1.TypeRequest
+	106, // 106: browserscale.v1.Browser.PressKey:input_type -> browserscale.v1.PressKeyRequest
+	107, // 107: browserscale.v1.Browser.ReleaseKey:input_type -> browserscale.v1.ReleaseKeyRequest
+	108, // 108: browserscale.v1.Browser.GetSelection:input_type -> browserscale.v1.GetSelectionRequest
+	114, // 109: browserscale.v1.Browser.SolveCaptcha:input_type -> browserscale.v1.SolveCaptchaRequest
+	117, // 110: browserscale.v1.Browser.GetStreamConfig:input_type -> browserscale.v1.GetStreamConfigRequest
+	119, // 111: browserscale.v1.Browser.StartStream:input_type -> browserscale.v1.StartStreamRequest
+	121, // 112: browserscale.v1.Browser.StopStream:input_type -> browserscale.v1.StopStreamRequest
+	124, // 113: browserscale.v1.Browser.RunScript:input_type -> browserscale.v1.RunScriptRequest
+	126, // 114: browserscale.v1.Browser.StartScript:input_type -> browserscale.v1.StartScriptRequest
+	128, // 115: browserscale.v1.Browser.StopScripts:input_type -> browserscale.v1.StopScriptsRequest
+	131, // 116: browserscale.v1.Browser.ListScriptRuns:input_type -> browserscale.v1.ListScriptRunsRequest
+	133, // 117: browserscale.v1.Browser.StreamScriptEvents:input_type -> browserscale.v1.StreamScriptEventsRequest
+	137, // 118: browserscale.v1.Browser.SetProxy:output_type -> google.protobuf.Empty
+	37,  // 119: browserscale.v1.Browser.GetPages:output_type -> browserscale.v1.GetPagesResponse
+	39,  // 120: browserscale.v1.Browser.Navigate:output_type -> browserscale.v1.NavigateResponse
+	137, // 121: browserscale.v1.Browser.LoadHTML:output_type -> google.protobuf.Empty
+	42,  // 122: browserscale.v1.Browser.Evaluate:output_type -> browserscale.v1.EvaluateResponse
+	44,  // 123: browserscale.v1.Browser.Run:output_type -> browserscale.v1.RunResponse
+	10,  // 124: browserscale.v1.Browser.WaitForAny:output_type -> browserscale.v1.WaitResult
+	29,  // 125: browserscale.v1.Browser.SelectOption:output_type -> browserscale.v1.SelectOptionResult
+	31,  // 126: browserscale.v1.Browser.ScrollTo:output_type -> browserscale.v1.ScrollResult
+	33,  // 127: browserscale.v1.Browser.MoveTo:output_type -> browserscale.v1.MoveResult
+	16,  // 128: browserscale.v1.Browser.Click:output_type -> browserscale.v1.ClickResult
+	27,  // 129: browserscale.v1.Browser.Drag:output_type -> browserscale.v1.DragResult
+	26,  // 130: browserscale.v1.Browser.Fill:output_type -> browserscale.v1.FillResult
+	19,  // 131: browserscale.v1.Browser.AddReaction:output_type -> browserscale.v1.AddReactionResponse
+	21,  // 132: browserscale.v1.Browser.RemoveReaction:output_type -> browserscale.v1.RemoveReactionResponse
+	23,  // 133: browserscale.v1.Browser.ListReactions:output_type -> browserscale.v1.ListReactionsResponse
+	137, // 134: browserscale.v1.Browser.SetBlockList:output_type -> google.protobuf.Empty
+	137, // 135: browserscale.v1.Browser.SetStaticPaths:output_type -> google.protobuf.Empty
+	55,  // 136: browserscale.v1.Browser.WaitForAnyRequest:output_type -> browserscale.v1.WaitForAnyRequestResponse
+	57,  // 137: browserscale.v1.Browser.WaitForAnyResponse:output_type -> browserscale.v1.WaitForAnyResponseResponse
+	59,  // 138: browserscale.v1.Browser.ModifyRequest:output_type -> browserscale.v1.ModifyRequestResponse
+	137, // 139: browserscale.v1.Browser.StartNetworkCapture:output_type -> google.protobuf.Empty
+	62,  // 140: browserscale.v1.Browser.StopNetworkCapture:output_type -> browserscale.v1.StopNetworkCaptureResponse
+	64,  // 141: browserscale.v1.Browser.StreamNetworkExchanges:output_type -> browserscale.v1.NetworkExchangeEvent
+	67,  // 142: browserscale.v1.Browser.GetCookies:output_type -> browserscale.v1.GetCookiesResponse
+	137, // 143: browserscale.v1.Browser.SetCookies:output_type -> google.protobuf.Empty
+	137, // 144: browserscale.v1.Browser.ClearCookies:output_type -> google.protobuf.Empty
+	73,  // 145: browserscale.v1.Browser.GetStorage:output_type -> browserscale.v1.GetStorageResponse
+	137, // 146: browserscale.v1.Browser.SetStorage:output_type -> google.protobuf.Empty
+	137, // 147: browserscale.v1.Browser.ClearStorage:output_type -> google.protobuf.Empty
+	79,  // 148: browserscale.v1.Browser.GetAuthSession:output_type -> browserscale.v1.GetAuthSessionResponse
+	137, // 149: browserscale.v1.Browser.SetAuthSession:output_type -> google.protobuf.Empty
+	82,  // 150: browserscale.v1.Browser.GetDOM:output_type -> browserscale.v1.GetDOMResponse
+	86,  // 151: browserscale.v1.Browser.GetDOMHash:output_type -> browserscale.v1.GetDOMHashResponse
+	84,  // 152: browserscale.v1.Browser.GetObservation:output_type -> browserscale.v1.GetObservationResponse
+	102, // 153: browserscale.v1.Browser.InspectAtPosition:output_type -> browserscale.v1.InspectAtPositionResponse
+	137, // 154: browserscale.v1.Browser.HighlightNode:output_type -> google.protobuf.Empty
+	88,  // 155: browserscale.v1.Browser.StartDomMirror:output_type -> browserscale.v1.StartDomMirrorResponse
+	137, // 156: browserscale.v1.Browser.StopDomMirror:output_type -> google.protobuf.Empty
+	91,  // 157: browserscale.v1.Browser.GetDomChildren:output_type -> browserscale.v1.GetDomChildrenResponse
+	137, // 158: browserscale.v1.Browser.ReleaseDomSubtree:output_type -> google.protobuf.Empty
+	94,  // 159: browserscale.v1.Browser.RevealDomNode:output_type -> browserscale.v1.RevealDomNodeResponse
+	96,  // 160: browserscale.v1.Browser.GetDomRevision:output_type -> browserscale.v1.GetDomRevisionResponse
+	100, // 161: browserscale.v1.Browser.StreamDomEvents:output_type -> browserscale.v1.DomEvent
+	111, // 162: browserscale.v1.Browser.Screenshot:output_type -> browserscale.v1.ScreenshotResponse
+	113, // 163: browserscale.v1.Browser.ReadCanvas:output_type -> browserscale.v1.ReadCanvasResponse
+	137, // 164: browserscale.v1.Browser.InsertText:output_type -> google.protobuf.Empty
+	137, // 165: browserscale.v1.Browser.Type:output_type -> google.protobuf.Empty
+	137, // 166: browserscale.v1.Browser.PressKey:output_type -> google.protobuf.Empty
+	137, // 167: browserscale.v1.Browser.ReleaseKey:output_type -> google.protobuf.Empty
+	109, // 168: browserscale.v1.Browser.GetSelection:output_type -> browserscale.v1.GetSelectionResponse
+	115, // 169: browserscale.v1.Browser.SolveCaptcha:output_type -> browserscale.v1.SolveCaptchaResponse
+	118, // 170: browserscale.v1.Browser.GetStreamConfig:output_type -> browserscale.v1.GetStreamConfigResponse
+	120, // 171: browserscale.v1.Browser.StartStream:output_type -> browserscale.v1.StartStreamResponse
+	122, // 172: browserscale.v1.Browser.StopStream:output_type -> browserscale.v1.StopStreamResponse
+	125, // 173: browserscale.v1.Browser.RunScript:output_type -> browserscale.v1.RunScriptResponse
+	127, // 174: browserscale.v1.Browser.StartScript:output_type -> browserscale.v1.StartScriptResponse
+	129, // 175: browserscale.v1.Browser.StopScripts:output_type -> browserscale.v1.StopScriptsResponse
+	132, // 176: browserscale.v1.Browser.ListScriptRuns:output_type -> browserscale.v1.ListScriptRunsResponse
+	136, // 177: browserscale.v1.Browser.StreamScriptEvents:output_type -> browserscale.v1.ScriptEvent
+	118, // [118:178] is the sub-list for method output_type
+	58,  // [58:118] is the sub-list for method input_type
+	58,  // [58:58] is the sub-list for extension type_name
+	58,  // [58:58] is the sub-list for extension extendee
+	0,   // [0:58] is the sub-list for field type_name
 }
 
 func init() { file_wrc_proto_init() }
@@ -10677,13 +11625,17 @@ func file_wrc_proto_init() {
 	file_wrc_proto_msgTypes[110].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[112].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[116].OneofWrappers = []any{}
+	file_wrc_proto_msgTypes[136].OneofWrappers = []any{
+		(*ScriptEvent_Log)(nil),
+		(*ScriptEvent_Finished)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_wrc_proto_rawDesc), len(file_wrc_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   123,
+			NumMessages:   137,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

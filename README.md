@@ -77,6 +77,19 @@ Rent an isolated browser session in seconds, automate it with human-like input, 
   offset, with live form state (typed values, checkbox state, `<select>`
   options) and a node handle to act on. A model reasons over what matters
   instead of raw HTML, and doesn't need a JS round-trip to ask where it is.
+- **Scripts that run inside the browser** — `RunScript` sends JavaScript to the
+  session and runs it in the browser process itself, with a `browser` object
+  giving it the same operations this SDK exposes — but as local calls rather than
+  network round trips, so a loop that polls or walks a list costs microseconds
+  per step instead of tens of milliseconds. The log streams back as the script
+  produces it. `StartScript` leaves a script running without the caller, which is
+  how work outlives the process that started it, and `FollowScript` attaches to
+  one already under way.
+- **Sessions you can find again** — `ListBrowsers` reports what an API key is
+  paying for: ids, proxy, egress address and remaining rental. A session
+  therefore outlives the process that rented it — recover it after a restart or
+  from another machine with `BrowserInfo.Connect`, and clean up what leaked with
+  `StopAllBrowsers`.
 - **Flow-optimized, idiomatic Go** — context-first methods with explicit
   errors, `Wait` races multiple outcomes, JS locators target elements by page
   logic when CSS is not enough.
@@ -147,11 +160,13 @@ in `Method` / `MethodWith` pairs — the plain form for the common case, the
 | --- | --- |
 | `RentBrowser(ctx, cfg)` | Rent a fresh session (`NewBrowserConfig(key, secs, host, port, user, pass)`). |
 | `ConnectSession(ctx, grpcURL, key, id)` | Attach to an existing session by id (from a prior rent). |
+| `ListBrowsers(ctx, key)` | The sessions a key currently holds; `BrowserInfo.Connect` attaches to one, `StopAllBrowsers` releases them all. |
 | `Navigate(ctx, url, timeoutMs)` | Load a URL (`0` = default timeout). |
 | `Wait(ctx, locators…, opts…)` | Race one or more conditions; returns the matched index + `frameId`. |
 | `Click(ctx, locator, opts…)` | Human-like click; rich `ClickError` (incl. the occluding element) on failure. |
 | `FillWith(ctx, locator, text, FillOpts{})` | Per-key typing that fires real input events; `InsertText` for bulk commit. |
 | `Evaluate(ctx, expr)` | Run JS in the page/frame and get a typed value back. |
+| `RunScript(ctx, source)` | Run JavaScript in the browser process, where every operation is a local call; `StartScript` leaves it running, `FollowScript` watches one already going. |
 | `GetObservation(ctx)` | Compact, node-handle-tagged view of the visible page across frames; `GetObservationWith` for budgets/format. |
 | `CaptureNetwork(ctx, opts, onExchange)` | Stream every request the session completes, optionally with response bodies. |
 | `MirrorDom(ctx, opts, onChange, onResync)` | Live, incrementally updated copy of the page's DOM across every frame. |

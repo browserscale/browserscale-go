@@ -102,6 +102,74 @@ func callRentApi(config *BrowserConfig) (*rentResponse, error) {
 	return &rentResp, nil
 }
 
+type stopAllResponse struct {
+	Success bool   `json:"success"`
+	Stopped int    `json:"stopped"`
+	Error   string `json:"error,omitempty"`
+}
+
+func callStopAllApi(apiKey string) (int, error) {
+	stopJSON, err := json.Marshal(listSessionsRequest{APIKey: apiKey})
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal stopAll request: %v", err)
+	}
+
+	resp, err := http.Post(ApiEndpoint+"/stopAll", "application/json", bytes.NewBuffer(stopJSON))
+	if err != nil {
+		return 0, fmt.Errorf("failed to stop browsers: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var response stopAllResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return 0, fmt.Errorf("failed to decode stopAll response: %v", err)
+	}
+	if !response.Success {
+		return 0, fmt.Errorf("failed to stop browsers: %s", response.Error)
+	}
+	return response.Stopped, nil
+}
+
+type listSessionsRequest struct {
+	APIKey string `json:"apiKey"`
+}
+
+type listSessionsResponse struct {
+	Success  bool          `json:"success"`
+	Sessions []BrowserInfo `json:"sessions"`
+	Error    string        `json:"error,omitempty"`
+}
+
+func callListSessionsApi(apiKey string) ([]BrowserInfo, error) {
+	listJSON, err := json.Marshal(listSessionsRequest{APIKey: apiKey})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal list request: %v", err)
+	}
+
+	resp, err := http.Post(ApiEndpoint+"/sessions", "application/json", bytes.NewBuffer(listJSON))
+	if err != nil {
+		return nil, fmt.Errorf("failed to list browsers: %v", err)
+	}
+	defer resp.Body.Close()
+
+	// Named explicitly, because this is the one endpoint a caller can reach on a
+	// deployment that does not have it: listing came after rent and stop. Letting
+	// it fall through would report a JSON decode failure against an error page,
+	// which says nothing about the actual problem.
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("the API at %s does not support listing sessions", ApiEndpoint)
+	}
+
+	var response listSessionsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to decode list response: %v", err)
+	}
+	if !response.Success {
+		return nil, fmt.Errorf("failed to list browsers: %s", response.Error)
+	}
+	return response.Sessions, nil
+}
+
 func callStopBrowserApi(apiKey string, sessionId string) error {
 	stopData := stopRequest{SessionId: sessionId, APIKey: apiKey}
 	stopJSON, err := json.Marshal(stopData)

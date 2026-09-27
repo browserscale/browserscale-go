@@ -75,6 +75,11 @@ const (
 	Browser_GetStreamConfig_FullMethodName        = "/browserscale.v1.Browser/GetStreamConfig"
 	Browser_StartStream_FullMethodName            = "/browserscale.v1.Browser/StartStream"
 	Browser_StopStream_FullMethodName             = "/browserscale.v1.Browser/StopStream"
+	Browser_RunScript_FullMethodName              = "/browserscale.v1.Browser/RunScript"
+	Browser_StartScript_FullMethodName            = "/browserscale.v1.Browser/StartScript"
+	Browser_StopScripts_FullMethodName            = "/browserscale.v1.Browser/StopScripts"
+	Browser_ListScriptRuns_FullMethodName         = "/browserscale.v1.Browser/ListScriptRuns"
+	Browser_StreamScriptEvents_FullMethodName     = "/browserscale.v1.Browser/StreamScriptEvents"
 )
 
 // BrowserClient is the client API for Browser service.
@@ -178,6 +183,26 @@ type BrowserClient interface {
 	GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error)
 	StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*StartStreamResponse, error)
 	StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*StopStreamResponse, error)
+	// Scripts — automation that runs inside the browser process rather than
+	// across the network. The script gets the same `browser.*` surface this
+	// service exposes, but each call is a function call in the browser instead of
+	// a gRPC round trip, so a loop that is unusable at ~50ms per step costs
+	// microseconds. Worth it for anything chatty: waiting for a selector,
+	// scraping a list, walking pagination.
+	//
+	// Two modes, because a script is either something you wait for or something
+	// you leave running. RunScript blocks and hands back the return value with
+	// the whole log, which is what a one-shot caller wants. StartScript returns a
+	// run id immediately and the output arrives on the event stream, which is the
+	// only workable shape for a script that outlives the request.
+	//
+	// Like network capture the stream is a separate subscription, so output
+	// survives a reader reconnect and two readers can watch one run.
+	RunScript(ctx context.Context, in *RunScriptRequest, opts ...grpc.CallOption) (*RunScriptResponse, error)
+	StartScript(ctx context.Context, in *StartScriptRequest, opts ...grpc.CallOption) (*StartScriptResponse, error)
+	StopScripts(ctx context.Context, in *StopScriptsRequest, opts ...grpc.CallOption) (*StopScriptsResponse, error)
+	ListScriptRuns(ctx context.Context, in *ListScriptRunsRequest, opts ...grpc.CallOption) (*ListScriptRunsResponse, error)
+	StreamScriptEvents(ctx context.Context, in *StreamScriptEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ScriptEvent], error)
 }
 
 type browserClient struct {
@@ -756,6 +781,65 @@ func (c *browserClient) StopStream(ctx context.Context, in *StopStreamRequest, o
 	return out, nil
 }
 
+func (c *browserClient) RunScript(ctx context.Context, in *RunScriptRequest, opts ...grpc.CallOption) (*RunScriptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RunScriptResponse)
+	err := c.cc.Invoke(ctx, Browser_RunScript_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StartScript(ctx context.Context, in *StartScriptRequest, opts ...grpc.CallOption) (*StartScriptResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StartScriptResponse)
+	err := c.cc.Invoke(ctx, Browser_StartScript_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StopScripts(ctx context.Context, in *StopScriptsRequest, opts ...grpc.CallOption) (*StopScriptsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StopScriptsResponse)
+	err := c.cc.Invoke(ctx, Browser_StopScripts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) ListScriptRuns(ctx context.Context, in *ListScriptRunsRequest, opts ...grpc.CallOption) (*ListScriptRunsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListScriptRunsResponse)
+	err := c.cc.Invoke(ctx, Browser_ListScriptRuns_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StreamScriptEvents(ctx context.Context, in *StreamScriptEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ScriptEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[2], Browser_StreamScriptEvents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamScriptEventsRequest, ScriptEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamScriptEventsClient = grpc.ServerStreamingClient[ScriptEvent]
+
 // BrowserServer is the server API for Browser service.
 // All implementations must embed UnimplementedBrowserServer
 // for forward compatibility.
@@ -857,6 +941,26 @@ type BrowserServer interface {
 	GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error)
 	StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error)
 	StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error)
+	// Scripts — automation that runs inside the browser process rather than
+	// across the network. The script gets the same `browser.*` surface this
+	// service exposes, but each call is a function call in the browser instead of
+	// a gRPC round trip, so a loop that is unusable at ~50ms per step costs
+	// microseconds. Worth it for anything chatty: waiting for a selector,
+	// scraping a list, walking pagination.
+	//
+	// Two modes, because a script is either something you wait for or something
+	// you leave running. RunScript blocks and hands back the return value with
+	// the whole log, which is what a one-shot caller wants. StartScript returns a
+	// run id immediately and the output arrives on the event stream, which is the
+	// only workable shape for a script that outlives the request.
+	//
+	// Like network capture the stream is a separate subscription, so output
+	// survives a reader reconnect and two readers can watch one run.
+	RunScript(context.Context, *RunScriptRequest) (*RunScriptResponse, error)
+	StartScript(context.Context, *StartScriptRequest) (*StartScriptResponse, error)
+	StopScripts(context.Context, *StopScriptsRequest) (*StopScriptsResponse, error)
+	ListScriptRuns(context.Context, *ListScriptRunsRequest) (*ListScriptRunsResponse, error)
+	StreamScriptEvents(*StreamScriptEventsRequest, grpc.ServerStreamingServer[ScriptEvent]) error
 	mustEmbedUnimplementedBrowserServer()
 }
 
@@ -1031,6 +1135,21 @@ func (UnimplementedBrowserServer) StartStream(context.Context, *StartStreamReque
 }
 func (UnimplementedBrowserServer) StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopStream not implemented")
+}
+func (UnimplementedBrowserServer) RunScript(context.Context, *RunScriptRequest) (*RunScriptResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RunScript not implemented")
+}
+func (UnimplementedBrowserServer) StartScript(context.Context, *StartScriptRequest) (*StartScriptResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StartScript not implemented")
+}
+func (UnimplementedBrowserServer) StopScripts(context.Context, *StopScriptsRequest) (*StopScriptsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method StopScripts not implemented")
+}
+func (UnimplementedBrowserServer) ListScriptRuns(context.Context, *ListScriptRunsRequest) (*ListScriptRunsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ListScriptRuns not implemented")
+}
+func (UnimplementedBrowserServer) StreamScriptEvents(*StreamScriptEventsRequest, grpc.ServerStreamingServer[ScriptEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamScriptEvents not implemented")
 }
 func (UnimplementedBrowserServer) mustEmbedUnimplementedBrowserServer() {}
 func (UnimplementedBrowserServer) testEmbeddedByValue()                 {}
@@ -2029,6 +2148,89 @@ func _Browser_StopStream_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_RunScript_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RunScriptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).RunScript(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_RunScript_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).RunScript(ctx, req.(*RunScriptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StartScript_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StartScriptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StartScript(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StartScript_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StartScript(ctx, req.(*StartScriptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StopScripts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(StopScriptsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).StopScripts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_StopScripts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).StopScripts(ctx, req.(*StopScriptsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_ListScriptRuns_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListScriptRunsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).ListScriptRuns(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_ListScriptRuns_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).ListScriptRuns(ctx, req.(*ListScriptRunsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StreamScriptEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamScriptEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BrowserServer).StreamScriptEvents(m, &grpc.GenericServerStream[StreamScriptEventsRequest, ScriptEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamScriptEventsServer = grpc.ServerStreamingServer[ScriptEvent]
+
 // Browser_ServiceDesc is the grpc.ServiceDesc for Browser service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -2248,6 +2450,22 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "StopStream",
 			Handler:    _Browser_StopStream_Handler,
 		},
+		{
+			MethodName: "RunScript",
+			Handler:    _Browser_RunScript_Handler,
+		},
+		{
+			MethodName: "StartScript",
+			Handler:    _Browser_StartScript_Handler,
+		},
+		{
+			MethodName: "StopScripts",
+			Handler:    _Browser_StopScripts_Handler,
+		},
+		{
+			MethodName: "ListScriptRuns",
+			Handler:    _Browser_ListScriptRuns_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -2258,6 +2476,11 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			StreamName:    "StreamDomEvents",
 			Handler:       _Browser_StreamDomEvents_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "StreamScriptEvents",
+			Handler:       _Browser_StreamScriptEvents_Handler,
 			ServerStreams: true,
 		},
 	},

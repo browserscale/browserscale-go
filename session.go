@@ -194,6 +194,103 @@ func StopBrowser(ctx context.Context, apiKey string, sessionId string) error {
 	return callStopBrowserApi(apiKey, sessionId)
 }
 
+// StopAllBrowsers releases every session an API key holds.
+//
+// The blunt instrument, for cleaning up after a run that leaked sessions — a
+// crashed worker pool, an interrupted test. It ends sessions this process never
+// created, including ones another machine is using, so it is not a way to tidy
+// up "my" sessions in a shared account.
+//
+// Unused credits are refunded per session, as with [StopBrowser].
+//
+// @param apiKey - API key whose sessions to release
+//
+// @returns int how many sessions were stopped
+//
+// @throws UNKNOWN_ERROR - the stop API rejected the request
+//
+// @example
+//
+//	stopped, err := browserscale.StopAllBrowsers(ctx, apiKey)
+func StopAllBrowsers(ctx context.Context, apiKey string) (int, error) {
+	return callStopAllApi(apiKey)
+}
+
+// BrowserInfo describes one running session as [ListBrowsers] reports it.
+type BrowserInfo struct {
+	SessionId string `json:"sessionId"`
+	// GrpcUrl is the endpoint this session is driven from — the same one rent
+	// returned. It is what makes a listed id usable: pass it to
+	// [ConnectSession], or call [BrowserInfo.Connect].
+	GrpcUrl string `json:"grpcUrl"`
+	// StartTime is unix seconds.
+	StartTime int64 `json:"startTime"`
+	// RentDuration is the rental length in seconds; 0 means unlimited.
+	RentDuration int `json:"rentDuration"`
+	// RemainingSeconds counts down to the end of the rental, and is nil for an
+	// unlimited one.
+	RemainingSeconds *int   `json:"remainingSeconds"`
+	CountryCode      string `json:"countryCode"`
+	Timezone         string `json:"timezone"`
+	ProxyHost        string `json:"proxyHost"`
+	// PublicIp is the address the session egresses from.
+	PublicIp string `json:"publicIp"`
+	// GpuIndex is the physical card the session renders on, nil on a
+	// software-rendered host.
+	GpuIndex *int `json:"gpuIndex"`
+}
+
+// ListBrowsers reports the sessions an API key currently holds.
+//
+// Use it to recover session ids the process lost — after a restart, or from a
+// different machine entirely. Without it a rental is only reachable through the
+// handle that created it, so a crash between rent and stop leaves a paid session
+// running with nothing able to name it.
+//
+// Only live sessions are listed; a stopped one is gone, not reported as ended.
+//
+// @param apiKey - API key whose sessions to list
+//
+// @returns []BrowserInfo oldest first, empty when the key holds none
+//
+// @throws UNKNOWN_ERROR - the list API rejected the request
+//
+// @example
+//
+//	browsers, err := browserscale.ListBrowsers(ctx, apiKey)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	for _, b := range browsers {
+//	    fmt.Println(b.SessionId, b.CountryCode)
+//	}
+func ListBrowsers(ctx context.Context, apiKey string) ([]BrowserInfo, error) {
+	return callListSessionsApi(apiKey)
+}
+
+// Connect attaches to this listed session over gRPC.
+//
+// Shorthand for [ConnectSession] with the URL and id already in hand. The
+// returned handle owns no rental, so [CloudBrowser.CloseConn] detaches without
+// ending the session — which is usually what you want for a session you found
+// rather than rented.
+//
+// @param apiKey - API key the session was rented with
+//
+// @returns *CloudBrowser attached to the session
+//
+// @throws UNKNOWN_ERROR - the gRPC connection could not be opened
+//
+// @example
+//
+//	browsers, _ := browserscale.ListBrowsers(ctx, apiKey)
+//	browser, err := browsers[0].Connect(ctx, apiKey)
+//	if err != nil { log.Fatal(err) }
+//	defer browser.CloseConn() // detach; the session keeps running
+func (b BrowserInfo) Connect(ctx context.Context, apiKey string) (*CloudBrowser, error) {
+	return ConnectSession(ctx, b.GrpcUrl, apiKey, b.SessionId)
+}
+
 // dialGrpc opens a gRPC client connection, choosing transport security from
 // the URL scheme: "grpcs://" dials with TLS against the system root CAs,
 // "grpc://" (or no scheme, for older servers) dials plaintext.
