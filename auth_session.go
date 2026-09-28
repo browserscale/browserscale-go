@@ -40,7 +40,9 @@ type AuthSession struct {
 //
 // @returns *AuthSession, or nil when there is nothing to export
 //
-// @throws UNKNOWN_ERROR - the auth session could not be read
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -60,6 +62,9 @@ func (c *CloudBrowser) GetAuthSession(ctx context.Context) (*AuthSession, error)
 	if err != nil {
 		return nil, err
 	}
+	if e := commandErrorFrom("getAuthSession", resp.GetError()); e != nil {
+		return nil, e
+	}
 	return authSessionFromProto(resp.Session), nil
 }
 
@@ -71,16 +76,21 @@ func (c *CloudBrowser) GetAuthSession(ctx context.Context) (*AuthSession, error)
 //
 // @param session - session as returned by GetAuthSession
 //
-// @throws UNKNOWN_ERROR - the auth session could not be written
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
 //	_ = browser.SetAuthSession(ctx, *saved)
 //	_ = browser.Navigate(ctx, "https://mail.google.com")
 func (c *CloudBrowser) SetAuthSession(ctx context.Context, session AuthSession) error {
-	_, err := c.client.SetAuthSession(ctx, &generated.SetAuthSessionRequest{
+	resp, err := c.client.SetAuthSession(ctx, &generated.SetAuthSessionRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Session: authSessionToProto(&session),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setAuthSession", resp.GetError())
 }

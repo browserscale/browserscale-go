@@ -103,7 +103,9 @@ type ScriptEventHandler func(ScriptEvent)
 //
 //	output. A script that threw is reported as Success false, not as an error
 //
-// @throws UNKNOWN_ERROR - the script could not be delivered to the browser
+// Reports only transport failures. A script that fails to compile or throws is
+// not an error here: the returned ScriptResult has Success=false and Result holds
+// the message, so a broken script stays distinguishable from a broken connection.
 //
 // @example
 //
@@ -179,7 +181,9 @@ type ScriptRun struct {
 //
 // @returns *ScriptRun handle for awaiting or cancelling the run
 //
-// @throws UNKNOWN_ERROR - onEvent is nil, or the run could not be started
+// A nil onEvent is rejected before anything is sent. Beyond that, reports only
+// transport failures: a script that fails to compile or throws surfaces on the
+// run itself rather than here.
 //
 // @example
 //
@@ -252,7 +256,9 @@ func (r *ScriptRun) RunId() string { return r.runId }
 //
 // @returns *ScriptFinished describing how the script ended
 //
-// @throws UNKNOWN_ERROR - the outcome could not be observed
+// Reports only transport failures - the connection dying, or the context being
+// cancelled while waiting. A script that threw is a normal outcome and arrives in
+// the returned ScriptFinished.
 func (r *ScriptRun) Wait(ctx context.Context) (*ScriptFinished, error) {
 	select {
 	case <-r.ended:
@@ -284,9 +290,8 @@ func (r *ScriptRun) Wait(ctx context.Context) (*ScriptFinished, error) {
 // ctx covers the cancel call, so pass a live one: the context the run was
 // started with may already be cancelled by the time you stop.
 //
-// @throws UNKNOWN_ERROR - the run could not be cancelled server-side; the local
-//
-//	reader is detached regardless
+// Reports only transport failures, and the local reader is detached regardless.
+// Cancelling a run that has already finished is a no-op rather than a failure.
 func (r *ScriptRun) Stop(ctx context.Context) error {
 	_, err := r.browser.StopScripts(ctx, r.runId)
 	r.cancel()
@@ -389,7 +394,8 @@ type ScriptFollow struct {
 //
 // @returns *ScriptFollow handle for stopping the subscription
 //
-// @throws UNKNOWN_ERROR - onEvent is nil, or the subscription could not be opened
+// A nil onEvent is rejected before anything is sent. Beyond that, reports only
+// transport failures: opening the subscription has no semantic failure of its own.
 //
 // @example
 //
@@ -494,7 +500,9 @@ func (f *ScriptFollow) pump() {
 //
 //	flight
 //
-// @throws UNKNOWN_ERROR - the cancel could not be delivered
+// Reports only transport failures. Cancelling runs that have already finished, or
+// none at all, is a no-op rather than a failure - read the returned count to learn
+// how many were actually stopped.
 //
 // @example
 //
@@ -519,7 +527,9 @@ func (c *CloudBrowser) StopScripts(ctx context.Context, runId string) (int, erro
 //
 // @returns []ScriptRunInfo one entry per run still executing
 //
-// @throws UNKNOWN_ERROR - the session could not be queried
+// Reports only transport failures - a dead session, a broken connection. This
+// call has no semantic failure of its own, so there are no error codes to branch
+// on.
 //
 // @example
 //

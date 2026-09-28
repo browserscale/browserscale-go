@@ -21,7 +21,10 @@ import (
 //
 //	post-scroll isVisible and the element's bounds after the scroll
 //
-// @throws UNKNOWN_ERROR - the element could not be scrolled into view
+// @throws not_found - no element matched the locator, or it could not be
+// scrolled. The only semantic failure this call has
+//
+// @see [ScrollError] for recovering the code with errors.As
 //
 // @example
 //

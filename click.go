@@ -31,9 +31,21 @@ type ClickOpts struct {
 
 // Click triggers a single left mouse click on the given target.
 //
-// The browser scrolls the element into view if needed, moves the cursor
-// along a human-like path, then dispatches a full mouseDown+mouseUp at a
-// randomized point inside the element's bounding rect.
+// The element does not have to be ready when you call this. For up to 5s the
+// browser keeps re-locating it, scrolls it into view, waits for its bounds to
+// hold still for 750ms, and hit-tests the exact point it is about to press — so
+// a plain Click also does the work of a preceding [CloudBrowser.Wait], and
+// needs no retry loop of your own. If the element never settles within that
+// budget the click is attempted at the deadline rather than abandoned.
+//
+// If something covers the target, the pointer is repositioned once to an
+// exposed part of it, which also gives hover-triggered overlays a chance to
+// collapse. Only if the target is still covered afterwards does the click
+// refuse — it never presses whatever happens to lie on top.
+//
+// The cursor then moves along a human-like path rather than jumping, and a
+// full mouseDown+mouseUp is dispatched at a randomized point inside the
+// element's bounding rect.
 //
 // @param target - locator describing what to click; [At] is also valid
 //
@@ -48,11 +60,16 @@ type ClickOpts struct {
 // Success=false) so callers can read the resolved coordinates. Recover the
 // detail with errors.As.
 //
-// @throws INVALID_LOCATOR - target is empty or has multiple targets set
-// @throws ELEMENT_NOT_FOUND - no element matched the locator
-// @throws FRAME_NOT_FOUND - the requested frame does not exist
-// @throws TIMEOUT - the operation exceeded the server-side timeout
-// @throws PAGE_NOT_ALIVE - the page has been closed
+// @throws not_found - no element matched the locator, or it could not be scrolled
+// into view
+// @throws occluded_no_reachable_point - the target is fully covered, with no
+// exposed part left to click
+// @throws occluded_after_evade - a reposition was tried and the target was still
+// covered
+//
+// A target that is empty or names several things at once is rejected before
+// anything is sent. A closed page or a frame that is gone is a transport failure
+// rather than a code.
 //
 // @see [ClickError] for the occlusion-failure detail
 // @see [CloudBrowser.ClickWith] for right-click, double-click,

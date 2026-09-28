@@ -32,7 +32,9 @@ type StorageOriginEntry struct {
 //
 // @returns []StorageOriginEntry, one per origin with localStorage data
 //
-// @throws UNKNOWN_ERROR - the storage could not be read
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -53,6 +55,9 @@ func (c *CloudBrowser) GetStorage(ctx context.Context, origin string) ([]Storage
 	if err != nil {
 		return nil, err
 	}
+	if e := commandErrorFrom("getStorage", resp.GetError()); e != nil {
+		return nil, e
+	}
 	return storageFromProto(resp.Storage), nil
 }
 
@@ -66,7 +71,9 @@ func (c *CloudBrowser) GetStorage(ctx context.Context, origin string) ([]Storage
 //
 // @param storage - entries to write, grouped by origin
 //
-// @throws UNKNOWN_ERROR - the storage could not be written
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -80,11 +87,14 @@ func (c *CloudBrowser) GetStorage(ctx context.Context, origin string) ([]Storage
 //	    },
 //	})
 func (c *CloudBrowser) SetStorage(ctx context.Context, storage []StorageOriginEntry) error {
-	_, err := c.client.SetStorage(ctx, &generated.SetStorageRequest{
+	resp, err := c.client.SetStorage(ctx, &generated.SetStorageRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Storage: storageToProto(storage),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setStorage", resp.GetError())
 }
 
 // ClearStorage deletes localStorage in the browser context.
@@ -92,7 +102,9 @@ func (c *CloudBrowser) SetStorage(ctx context.Context, storage []StorageOriginEn
 // @param origin - if non-empty, only this origin's storage is deleted (e.g.
 // "https://example.com"); empty string deletes all origins
 //
-// @throws UNKNOWN_ERROR - the storage could not be cleared
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -102,9 +114,12 @@ func (c *CloudBrowser) SetStorage(ctx context.Context, storage []StorageOriginEn
 //	// Wipe everything.
 //	_ = browser.ClearStorage(ctx, "")
 func (c *CloudBrowser) ClearStorage(ctx context.Context, origin string) error {
-	_, err := c.client.ClearStorage(ctx, &generated.ClearStorageRequest{
+	resp, err := c.client.ClearStorage(ctx, &generated.ClearStorageRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Origin: strPtr(origin),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("clearStorage", resp.GetError())
 }

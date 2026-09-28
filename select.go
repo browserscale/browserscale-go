@@ -36,15 +36,16 @@ type SelectOpts struct {
 //
 //	selectedValue and selectedText after the change
 //
-// @throws INVALID_LOCATOR - target is empty or has multiple targets set
-// @throws ELEMENT_NOT_FOUND - no element matched the locator
-// @throws FRAME_NOT_FOUND - the requested frame does not exist
-// @throws SELECT_FAILED - the option could not be selected
+// @throws not_found - the <select> element could not be located
+// @throws option_not_found - the <select> was found but no option matched, so the
+// index is out of range or the element is not a <select> at all
 //
-//	(out of range, or element is not a <select>)
+// selectOption is programmatic and has no pointer gate, so there is no occlusion
+// code here. A target that is empty or names several things at once is rejected
+// before anything is sent, and a closed page or a frame that is gone is a
+// transport failure rather than a code.
 //
-// @throws TIMEOUT - the operation exceeded the server-side timeout
-// @throws PAGE_NOT_ALIVE - the page has been closed
+// @see [SelectOptionError] for recovering the code with errors.As
 //
 // @see [CloudBrowser.SelectByIndexWith] for suppressing events or
 //

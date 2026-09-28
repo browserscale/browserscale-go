@@ -34,9 +34,24 @@ type FillOpts struct {
 // Fill clicks the target and types text into it, appending to any
 // existing content.
 //
-// The browser scrolls the element into view, moves the cursor along a
-// human-like path, clicks to focus, then types the text character-by-
-// character with QWERTZ keyboard simulation and human-like timing.
+// The field is acquired with the same smart click as [CloudBrowser.Click]:
+// re-located, scrolled into view, settled and hit-tested within the timeout
+// budget, so it does not have to be present or ready yet. The cursor then
+// moves along a human-like path and clicks to focus.
+//
+// Typing is per-key rather than a value assignment: keyDown, char and keyUp for
+// every character, with the keycodes of the layout that matches the session's
+// region and human cadence between them. If the field already holds text the
+// caret is moved to the end first, so appended input lands after the existing
+// content instead of wherever the caret happened to sit.
+//
+// Fill is strictly target-bound. If something else takes focus mid-typing, the
+// remaining characters are never typed into the thief — the browser tries to
+// re-focus the target and otherwise fails with "focus_stolen", naming the
+// element that holds focus instead so you can deal with it (a consent button,
+// a different field). For stream-style typing that is *supposed* to move
+// between fields, such as an OTP input that auto-advances, use
+// [CloudBrowser.Type] instead.
 //
 // To overwrite the field instead of appending, use [CloudBrowser.FillWith]
 // with ClearFirst: true.
@@ -56,9 +71,21 @@ type FillOpts struct {
 // *ElementResult is still returned (with Success=false). Recover the detail
 // with errors.As.
 //
-// @throws INVALID_LOCATOR - target is empty or has multiple targets set
-// @throws TIMEOUT - the operation exceeded the server-side timeout
-// @throws PAGE_NOT_ALIVE - the page has been closed
+// @throws not_found - no element matched the locator, or it could not be scrolled
+// into view
+// @throws occluded_no_reachable_point - the field is fully covered, with no
+// exposed part left to click
+// @throws occluded_after_evade - a reposition was tried and the field was still
+// covered
+// @throws focus_stolen - typing had started and another element took focus. The
+// detail names what holds it, which is usually the overlay or autocomplete popup
+// that interrupted
+// @throws focus_lost - focus left the field and nothing holds it anymore, so the
+// field vanished or turned readonly mid-stream
+//
+// A target that is empty or names several things at once is rejected before
+// anything is sent. A closed page or a frame that is gone is a transport failure
+// rather than a code.
 //
 // @see [FillError] for the focus-failure detail
 // @see [CloudBrowser.FillWith] for clearing existing content or

@@ -50,10 +50,10 @@ type ReactionOpts struct {
 	IntervalMs float64
 }
 
-// AddReaction registers a one-shot "reaction": a background poller (one shared
-// loop per page) watches for the match locator and, as soon as it matches,
-// clicks it with the full smart-click machinery (scroll, human path, occlusion
-// gate, evade) — then removes itself. The poller yields to any in-flight input
+// AddReaction registers a one-shot "reaction": the browser watches for the match
+// locator in the background and, as soon as it matches, clicks it the same way
+// [CloudBrowser.Click] does (scroll, human path, occlusion check) — then removes
+// itself. The reaction yields to any in-flight input
 // action and only fires while the pointer is idle, so a reaction naturally
 // slots into the gaps of a retrying foreground action (e.g. it dismisses a
 // newsletter modal blocking a [CloudBrowser.Click], after which the click's own
@@ -68,9 +68,10 @@ type ReactionOpts struct {
 //
 // @returns the reactionId (pass to [CloudBrowser.RemoveReaction])
 //
-// @throws INVALID_LOCATOR - match is nil, has no selector/JS expression, or is
-//
-//	a Node/At locator
+// A match that is nil, carries neither a selector nor a JS expression, or is a
+// Node/At locator is rejected before anything is sent. Beyond that, reports only
+// transport failures: registering a reaction has no semantic failure of its own,
+// and says nothing about whether the element it watches ever appears.
 //
 // @see [CloudBrowser.AddReactionWith] for a different click target, button,
 //
@@ -132,6 +133,9 @@ func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o Re
 	if err != nil {
 		return "", err
 	}
+	if e := commandErrorFrom("addReaction", resp.GetError()); e != nil {
+		return "", e
+	}
 	return resp.ReactionId, nil
 }
 
@@ -141,6 +145,10 @@ func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o Re
 // @param reactionID - id returned by [CloudBrowser.AddReaction]
 //
 // @returns true if a pending reaction with this id existed and was removed
+//
+// Removing an id that is not registered is a no-op rather than an error, so the
+// returned bool - not the error - is what tells you whether anything was there.
+// Reports only transport failures.
 //
 // @example
 //
@@ -154,6 +162,9 @@ func (c *CloudBrowser) RemoveReaction(ctx context.Context, reactionID string) (b
 	if err != nil {
 		return false, err
 	}
+	if e := commandErrorFrom("removeReaction", resp.GetError()); e != nil {
+		return false, e
+	}
 	return resp.Removed, nil
 }
 
@@ -161,6 +172,10 @@ func (c *CloudBrowser) RemoveReaction(ctx context.Context, reactionID string) (b
 // page. Reactions that have already fired (one-shot) are not included.
 //
 // @returns the pending reactions for the page
+//
+// Reports only transport failures - a dead session, a page that is gone, a broken
+// connection. This call has no semantic failure of its own, so there are no error
+// codes to branch on.
 //
 // @example
 //
@@ -175,6 +190,9 @@ func (c *CloudBrowser) ListReactions(ctx context.Context) ([]ReactionInfo, error
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("listReactions", resp.GetError()); e != nil {
+		return nil, e
 	}
 	out := make([]ReactionInfo, 0, len(resp.GetReactions()))
 	for _, r := range resp.GetReactions() {

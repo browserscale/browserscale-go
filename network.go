@@ -76,7 +76,9 @@ type RequestPattern struct {
 //
 // @param patterns - URL wildcards to block; nil or empty clears the list
 //
-// @throws UNKNOWN_ERROR - the blocklist could not be applied
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -85,11 +87,14 @@ type RequestPattern struct {
 //	    "*googletagmanager.com*",
 //	})
 func (c *CloudBrowser) SetBlockList(ctx context.Context, patterns []string) error {
-	_, err := c.client.SetBlockList(ctx, &generated.SetBlockListRequest{
+	resp, err := c.client.SetBlockList(ctx, &generated.SetBlockListRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Patterns: patterns,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setBlockList", resp.GetError())
 }
 
 // SetStaticPaths configures the session to serve cached static responses
@@ -103,18 +108,23 @@ func (c *CloudBrowser) SetBlockList(ctx context.Context, patterns []string) erro
 // @param blobName - server-side identifier of the snapshot to serve from
 // @param patterns - URL wildcards to redirect to the cache; nil/empty disables
 //
-// @throws UNKNOWN_ERROR - the static paths could not be configured
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
 //	_ = browser.SetStaticPaths(ctx, "snap-2026-05", []string{"*.example.com/*"})
 func (c *CloudBrowser) SetStaticPaths(ctx context.Context, blobName string, patterns []string) error {
-	_, err := c.client.SetStaticPaths(ctx, &generated.SetStaticPathsRequest{
+	resp, err := c.client.SetStaticPaths(ctx, &generated.SetStaticPathsRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		BlobName: blobName,
 		Patterns: patterns,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setStaticPaths", resp.GetError())
 }
 
 // WaitForAnyRequest blocks until the next request whose URL matches one
@@ -131,7 +141,14 @@ func (c *CloudBrowser) SetStaticPaths(ctx context.Context, blobName string, patt
 //
 //	the captured method/URL/headers/body, and an error
 //
-// @throws UNKNOWN_ERROR - the wait timed out or no patterns were supplied
+// @throws timeout - no request matched any pattern before the deadline. Nothing
+// occurring is an answer, and it stays distinguishable from a connection that
+// died on the way
+//
+// Supplying no patterns is a caller mistake rather than an outcome, and reports
+// as a plain error.
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -156,6 +173,9 @@ func (c *CloudBrowser) WaitForAnyRequest(ctx context.Context, timeoutMs float64,
 	})
 	if err != nil {
 		return -1, nil, err
+	}
+	if e := commandErrorFrom("waitForAnyRequest", resp.GetError()); e != nil {
+		return -1, nil, e
 	}
 	return resp.Index, interceptedRequestFromProto(resp.Request), nil
 }
@@ -196,6 +216,9 @@ func (c *CloudBrowser) WaitForAnyResponse(ctx context.Context, timeoutMs float64
 	})
 	if err != nil {
 		return -1, nil, err
+	}
+	if e := commandErrorFrom("waitForAnyResponse", resp.GetError()); e != nil {
+		return -1, nil, e
 	}
 	return resp.Index, interceptedResponseFromProto(resp.Response), nil
 }
@@ -240,7 +263,10 @@ func splitRequestPatterns(patterns []RequestPattern) (urls []string, aborts []in
 //
 //	were actually sent on the wire after modifications were applied
 //
-// @throws UNKNOWN_ERROR - no matching request appeared within the timeout
+// @throws timeout - no matching request appeared before the deadline, so nothing
+// was modified
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -273,6 +299,9 @@ func (c *CloudBrowser) ModifyRequest(ctx context.Context, urlPattern, body strin
 	resp, err := c.client.ModifyRequest(ctx, req)
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("modifyRequest", resp.GetError()); e != nil {
+		return nil, e
 	}
 	return interceptedRequestFromProto(resp.Request), nil
 }
@@ -371,7 +400,8 @@ type NetworkCapture struct {
 //
 //	it ended
 //
-// @throws UNKNOWN_ERROR - onExchange is nil, or the capture could not be started
+// A nil onExchange is rejected before anything is sent. Beyond that, reports only
+// transport failures: arming the capture has no semantic failure of its own.
 //
 // @example
 //
@@ -411,28 +441,38 @@ func (c *CloudBrowser) CaptureNetwork(ctx context.Context, opts NetworkCaptureOp
 //
 // @param opts - which requests to capture and whether to keep bodies
 //
-// @throws UNKNOWN_ERROR - the capture could not be started
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 func (c *CloudBrowser) StartNetworkCapture(ctx context.Context, opts NetworkCaptureOptions) error {
-	_, err := c.client.StartNetworkCapture(ctx, &generated.StartNetworkCaptureRequest{
+	resp, err := c.client.StartNetworkCapture(ctx, &generated.StartNetworkCaptureRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Patterns:     opts.Patterns,
 		Bodies:       string(opts.Bodies),
 		BodyPatterns: opts.BodyPatterns,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("startNetworkCapture", resp.GetError())
 }
 
 // StopNetworkCapture disarms the session's capture.
 //
 // @returns bool reporting whether a capture was running, and an error
 //
-// @throws UNKNOWN_ERROR - the capture could not be stopped
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 func (c *CloudBrowser) StopNetworkCapture(ctx context.Context) (bool, error) {
 	resp, err := c.client.StopNetworkCapture(ctx, &generated.StopNetworkCaptureRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 	})
 	if err != nil {
 		return false, err
+	}
+	if e := commandErrorFrom("stopNetworkCapture", resp.GetError()); e != nil {
+		return false, e
 	}
 	return resp.Stopped, nil
 }
@@ -453,7 +493,8 @@ func (c *CloudBrowser) StopNetworkCapture(ctx context.Context) (bool, error) {
 //
 //	simply never fires when none is
 //
-// @throws UNKNOWN_ERROR - onExchange is nil, or the subscription could not be opened
+// A nil onExchange is rejected before anything is sent. Beyond that, reports only
+// transport failures: opening the subscription has no semantic failure of its own.
 func (c *CloudBrowser) StreamNetworkExchanges(ctx context.Context, onExchange NetworkExchangeHandler) (*NetworkCapture, error) {
 	if onExchange == nil {
 		return nil, errors.New("browserscale.StreamNetworkExchanges: onExchange must not be nil")
@@ -529,9 +570,9 @@ func (nc *NetworkCapture) Dropped() uint64 {
 // ctx covers the disarm call, so pass a live one: the context the capture was
 // created with may already be cancelled by the time you stop.
 //
-// @throws UNKNOWN_ERROR - the capture could not be disarmed; the local reader is
-//
-//	shut down regardless
+// Reports only transport failures, and the local reader is shut down regardless.
+// Disarming a capture that is not running is a no-op rather than a failure, so
+// there are no error codes to branch on.
 func (nc *NetworkCapture) Stop(ctx context.Context) error {
 	nc.mu.Lock()
 	if nc.stopped {

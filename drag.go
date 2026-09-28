@@ -9,10 +9,12 @@ import (
 // DragBy picks up the target and drops it at an offset relative to the
 // pickup point.
 //
-// The browser presses the left mouse button at a pickup point inside the
-// element, drags along a human-like path to (pickupX+offsetX,
-// pickupY+offsetY), then releases. [At] is not a valid target — drag
-// needs a real element.
+// The source is acquired with the same smart click as [CloudBrowser.Click] —
+// re-located, scrolled into view, settled and hit-tested — so the handle does
+// not have to be ready when you call this. The browser then presses the left
+// mouse button at a point inside the element, drags along a human-like path to
+// (pickupX+offsetX, pickupY+offsetY), and releases. [At] is not a valid
+// target — drag needs a real element.
 //
 // @param target - locator describing the element to pick up
 // @param offsetX - horizontal distance to drag, in CSS pixels
@@ -22,7 +24,17 @@ import (
 //
 //	final cursor position (rootX, rootY) where the drop happened
 //
-// @throws UNKNOWN_ERROR - the drag could not be performed
+// If the pickup itself failed — the handle was not found, or something covered
+// it — err is a [*DragError] whose ClickError carries the full occlusion
+// detail. Recover it with errors.As.
+//
+// @throws not_found - no element matched the locator
+// @throws occluded_no_reachable_point - the handle is fully covered, with no
+// exposed part left to grab
+// @throws occluded_after_evade - a reposition was tried and the handle was still
+// covered
+//
+// @see [DragError] for the occlusion-failure detail
 //
 // @example
 //
@@ -37,8 +49,9 @@ func (c *CloudBrowser) DragBy(ctx context.Context, target *Locator, offsetX, off
 // DragTo picks up the target and drops it at absolute root-viewport
 // coordinates.
 //
-// Same gesture as [CloudBrowser.DragBy], but the drop destination is in
-// page coordinates rather than relative to the pickup point.
+// Same gesture and same source acquisition as [CloudBrowser.DragBy], but the
+// drop destination is in page coordinates rather than relative to the pickup
+// point.
 //
 // @param target - locator describing the element to pick up
 // @param absoluteX - horizontal drop coordinate in the root viewport
@@ -48,7 +61,13 @@ func (c *CloudBrowser) DragBy(ctx context.Context, target *Locator, offsetX, off
 //
 //	final cursor position (rootX, rootY) where the drop happened
 //
-// @throws UNKNOWN_ERROR - the drag could not be performed
+// @throws not_found - no element matched the locator
+// @throws occluded_no_reachable_point - the handle is fully covered, with no
+// exposed part left to grab
+// @throws occluded_after_evade - a reposition was tried and the handle was still
+// covered
+//
+// @see [DragError] for the occlusion-failure detail
 //
 // @example
 //

@@ -6,6 +6,16 @@ import (
 
 // ── proto -> SDK ──
 
+// commandErrorFrom turns the optional error of a uniform result into a typed
+// error, or nil when the command succeeded. Returning nil for the success case
+// is what keeps every call site a one-liner.
+func commandErrorFrom(command string, e *generated.CommandError) error {
+	if e == nil {
+		return nil
+	}
+	return &CommandError{Command: command, Code: e.Code, Message: e.Message}
+}
+
 func rectFromProto(r *generated.Rect) Rect {
 	if r == nil {
 		return Rect{}

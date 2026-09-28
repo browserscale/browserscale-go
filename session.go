@@ -13,9 +13,8 @@ import (
 
 // CloudBrowser is the SDK-side handle for an active browserscale browser session.
 //
-// One CloudBrowser corresponds to exactly one browser context, which is
-// implicitly bound to its primary page server-side. The proto's page_id
-// field is currently ignored server-side, so the SDK never sets it.
+// One CloudBrowser corresponds to exactly one browser context, and its
+// commands act on that context's primary page.
 type CloudBrowser struct {
 	apiKey         string
 	sessionId      string
@@ -42,9 +41,9 @@ type CloudBrowser struct {
 //
 //	[CloudBrowser.Close] or [CloudBrowser.StopBrowser] when done
 //
-// @throws UNKNOWN_ERROR - the rent API rejected the request or the gRPC
-//
-//	connection could not be established
+// Reports a plain error when the rent API rejects the request or the connection
+// cannot be established. These are session-lifecycle failures rather than browser
+// outcomes, so they carry no code.
 //
 // @example
 //
@@ -97,7 +96,8 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 //
 //	handle owns no rental, so calling Close only closes the gRPC connection
 //
-// @throws UNKNOWN_ERROR - the gRPC connection could not be opened
+// Reports a plain error when the connection cannot be opened. That is a
+// lifecycle failure rather than a browser outcome, so it carries no code.
 //
 // @example
 //
@@ -126,7 +126,8 @@ func ConnectSession(ctx context.Context, grpcUrl string, apiKey string, sessionI
 // underlying gRPC connection. Safe to call multiple times — subsequent
 // calls on a closed connection return an error from the second close.
 //
-// @throws UNKNOWN_ERROR - the stop API or the gRPC close returned an error
+// Reports a plain error when the stop API or the connection close fails. The
+// session is released either way; retrying a stop is safe.
 //
 // @see [CloudBrowser.Close] - same operation with a background context
 //
@@ -165,7 +166,8 @@ func (c *CloudBrowser) Close() error {
 // with [CloudBrowser.Close] / [CloudBrowser.StopBrowser], which also release the
 // rental via the stop endpoint.
 //
-// @throws UNKNOWN_ERROR - the gRPC connection could not be closed
+// Reports a plain error when the connection cannot be closed cleanly. The local
+// handle is unusable afterwards regardless.
 //
 // @example
 //
@@ -185,7 +187,8 @@ func (c *CloudBrowser) CloseConn() error {
 // @param apiKey - API key the session was rented with
 // @param sessionId - id of the session to release
 //
-// @throws UNKNOWN_ERROR - the stop API rejected the request
+// Reports a plain error when the stop API rejects the request. Stopping a session
+// that is already gone is a no-op rather than a failure.
 //
 // @example
 //
@@ -207,7 +210,8 @@ func StopBrowser(ctx context.Context, apiKey string, sessionId string) error {
 //
 // @returns int how many sessions were stopped
 //
-// @throws UNKNOWN_ERROR - the stop API rejected the request
+// Reports a plain error when the stop API rejects the request - read the returned
+// count to learn how many sessions were actually stopped.
 //
 // @example
 //
@@ -253,7 +257,8 @@ type BrowserInfo struct {
 //
 // @returns []BrowserInfo oldest first, empty when the key holds none
 //
-// @throws UNKNOWN_ERROR - the list API rejected the request
+// Reports a plain error when the list API rejects the request. An account with no
+// running sessions is an empty list, not a failure.
 //
 // @example
 //
@@ -279,7 +284,8 @@ func ListBrowsers(ctx context.Context, apiKey string) ([]BrowserInfo, error) {
 //
 // @returns *CloudBrowser attached to the session
 //
-// @throws UNKNOWN_ERROR - the gRPC connection could not be opened
+// Reports a plain error when the connection cannot be opened. That is a
+// lifecycle failure rather than a browser outcome, so it carries no code.
 //
 // @example
 //

@@ -308,7 +308,12 @@ type DomMirror struct {
 //
 // @returns *DomMirror holding the tree
 //
-// @throws UNKNOWN_ERROR - onChange is nil, or the mirror could not be started
+// @throws mirror_failed - the page could not be serialized, usually a document
+// that went away while the tree was being built. No mirror is left running
+//
+// A nil onChange is rejected before anything is sent.
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -397,7 +402,10 @@ func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onC
 //
 //	sequence
 //
-// @throws UNKNOWN_ERROR - the mirror could not be started
+// @throws mirror_failed - the page could not be serialized, usually a document
+// that went away while the tree was being built. No mirror is left running
+//
+// @see [CommandError] for recovering the code with errors.As
 func (c *CloudBrowser) StartDomMirror(ctx context.Context, opts DomMirrorOptions) (*DomSnapshot, error) {
 	req := &generated.StartDomMirrorRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
@@ -411,17 +419,25 @@ func (c *CloudBrowser) StartDomMirror(ctx context.Context, opts DomMirrorOptions
 	if err != nil {
 		return nil, err
 	}
+	if e := commandErrorFrom("startDomMirror", resp.GetError()); e != nil {
+		return nil, e
+	}
 	return &DomSnapshot{Root: resp.Root, FrameId: resp.FrameId, Seq: resp.Seq}, nil
 }
 
 // StopDomMirror stops the page's mirror, every frame of it. Idempotent.
 //
-// @throws UNKNOWN_ERROR - the mirror could not be stopped
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. Stopping a mirror that is not running is a no-op rather
+// than a failure, so there are no error codes to branch on.
 func (c *CloudBrowser) StopDomMirror(ctx context.Context) error {
-	_, err := c.client.StopDomMirror(ctx, &generated.StopDomMirrorRequest{
+	resp, err := c.client.StopDomMirror(ctx, &generated.StopDomMirrorRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("stopDomMirror", resp.GetError())
 }
 
 // GetDomChildren fetches a node's children and starts reporting changes inside
@@ -438,7 +454,16 @@ func (c *CloudBrowser) StopDomMirror(ctx context.Context) error {
 //
 //	valid as of
 //
-// @throws UNKNOWN_ERROR - the children could not be read
+// @throws not_mirrored - the page has no mirror, or the frame is not part of the
+// one it has. Start a mirror first; a client that replays ids across a resync
+// lands here and recovers by fetching the tree again
+// @throws mirror_failed - the subtree could not be serialized, usually a
+// document that went away mid-read
+//
+// An id that is simply unknown is not a failure: the call succeeds with an empty
+// result.
+//
+// @see [CommandError] for recovering the code with errors.As
 func (c *CloudBrowser) GetDomChildren(ctx context.Context, backendNodeId int32, frameId string, depth int32) (*DomChildren, error) {
 	resp, err := c.client.GetDomChildren(ctx, &generated.GetDomChildrenRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
@@ -448,6 +473,9 @@ func (c *CloudBrowser) GetDomChildren(ctx context.Context, backendNodeId int32, 
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("getDomChildren", resp.GetError()); e != nil {
+		return nil, e
 	}
 	return &DomChildren{Children: resp.Children, Seq: resp.Seq}, nil
 }
@@ -461,14 +489,21 @@ func (c *CloudBrowser) GetDomChildren(ctx context.Context, backendNodeId int32, 
 // @param backendNodeId - the node to close
 // @param frameId - the frame its id belongs to; empty targets the main frame
 //
-// @throws UNKNOWN_ERROR - the subtree could not be released
+// @throws not_mirrored - the page has no mirror, or frameId is not part of the
+// one it has; this is what replaying ids from a tree that has since been
+// resynced looks like, so fetch the current tree and address the node again
+//
+// @see [CommandError] for recovering the code with errors.As
 func (c *CloudBrowser) ReleaseDomSubtree(ctx context.Context, backendNodeId int32, frameId string) error {
-	_, err := c.client.ReleaseDomSubtree(ctx, &generated.ReleaseDomSubtreeRequest{
+	resp, err := c.client.ReleaseDomSubtree(ctx, &generated.ReleaseDomSubtreeRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("releaseDomSubtree", resp.GetError())
 }
 
 // RevealDomNode returns the chain from the main document down to a node, each
@@ -483,7 +518,15 @@ func (c *CloudBrowser) ReleaseDomSubtree(ctx context.Context, backendNodeId int3
 //
 //	valid as of
 //
-// @throws UNKNOWN_ERROR - the path could not be built
+// @throws not_mirrored - the page has no mirror, or the frame is not part of the
+// one it has
+// @throws mirror_failed - the path could not be serialized, usually a document
+// that went away mid-read
+//
+// An id that is simply unknown is not a failure: the call succeeds with an empty
+// result.
+//
+// @see [CommandError] for recovering the code with errors.As
 func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, frameId string) (*DomPath, error) {
 	resp, err := c.client.RevealDomNode(ctx, &generated.RevealDomNodeRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
@@ -492,6 +535,9 @@ func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, f
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("revealDomNode", resp.GetError()); e != nil {
+		return nil, e
 	}
 	return &DomPath{Path: resp.Path, Seq: resp.Seq}, nil
 }
@@ -509,7 +555,9 @@ func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, f
 //
 // @returns uint64 monotonic counter
 //
-// @throws UNKNOWN_ERROR - the revision could not be read
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 func (c *CloudBrowser) GetDomRevision(ctx context.Context, frameId string) (uint64, error) {
 	resp, err := c.client.GetDomRevision(ctx, &generated.GetDomRevisionRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
@@ -517,6 +565,9 @@ func (c *CloudBrowser) GetDomRevision(ctx context.Context, frameId string) (uint
 	})
 	if err != nil {
 		return 0, err
+	}
+	if e := commandErrorFrom("getDomRevision", resp.GetError()); e != nil {
+		return 0, e
 	}
 	return resp.Revision, nil
 }
@@ -615,7 +666,16 @@ func (m *DomMirror) Err() error {
 // @param node - the node to open, from [DomMirror.Root] or [DomMirror.Node]
 // @param depth - levels below the node; 0 uses the server default of 1
 //
-// @throws UNKNOWN_ERROR - the children could not be read
+// @throws not_mirrored - the page has no mirror, or the frame is not part of the
+// one it has. Start a mirror first; a client that replays ids across a resync
+// lands here and recovers by fetching the tree again
+// @throws mirror_failed - the subtree could not be serialized, usually a
+// document that went away mid-read
+//
+// An id that is simply unknown is not a failure: the call succeeds with an empty
+// result.
+//
+// @see [CommandError] for recovering the code with errors.As
 func (m *DomMirror) Expand(ctx context.Context, node *DomNode, depth int32) error {
 	if node == nil {
 		return errors.New("browserscale.DomMirror.Expand: node must not be nil")
@@ -664,7 +724,11 @@ func (m *DomMirror) Expand(ctx context.Context, node *DomNode, depth int32) erro
 //
 // @param node - the node to close
 //
-// @throws UNKNOWN_ERROR - the subtree could not be released
+// @throws not_mirrored - the page has no mirror, or the node's frame is not part
+// of the one it has. This is what collapsing a node from a tree that has since
+// been resynced looks like; fetch the current tree and address the node again
+//
+// @see [CommandError] for recovering the code with errors.As
 func (m *DomMirror) Collapse(ctx context.Context, node *DomNode) error {
 	if node == nil {
 		return errors.New("browserscale.DomMirror.Collapse: node must not be nil")
@@ -710,7 +774,15 @@ func (m *DomMirror) Collapse(ctx context.Context, node *DomNode) error {
 //
 //	node is not on the page
 //
-// @throws UNKNOWN_ERROR - the path could not be built
+// @throws not_mirrored - the page has no mirror, or the frame is not part of the
+// one it has
+// @throws mirror_failed - the path could not be serialized, usually a document
+// that went away mid-read
+//
+// An id that is simply unknown is not a failure: the call succeeds with an empty
+// result.
+//
+// @see [CommandError] for recovering the code with errors.As
 func (m *DomMirror) Reveal(ctx context.Context, backendNodeId int32, frameId string) ([]*DomNode, error) {
 	if m.isStopped() {
 		return nil, nil
@@ -788,7 +860,10 @@ func (m *DomMirror) Reveal(ctx context.Context, backendNodeId int32, frameId str
 // It happens automatically whenever the browser says the copy is void, so you
 // rarely need to call it.
 //
-// @throws UNKNOWN_ERROR - the page could not be re-read; the mirror then ends
+// @throws mirror_failed - the page could not be serialized, usually a document
+// that went away while the tree was being rebuilt. The mirror then ends
+//
+// @see [CommandError] for recovering the code with errors.As
 func (m *DomMirror) Resync(ctx context.Context) error {
 	return m.resync(ctx, "manual")
 }
@@ -813,9 +888,10 @@ func (m *DomMirror) Wait() error {
 // context the mirror was created with may already be cancelled by the time you
 // stop.
 //
-// @throws UNKNOWN_ERROR - the mirror could not be stopped server-side; the local
-//
-//	reader is shut down regardless
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. The local reader is shut down regardless, and stopping a
+// mirror that is not running is a no-op, so there are no error codes to branch
+// on.
 func (m *DomMirror) Stop(ctx context.Context) error {
 	m.mu.Lock()
 	if m.stopped {

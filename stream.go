@@ -28,7 +28,8 @@ type IceServer struct {
 //
 // @returns the ICE servers for the client RTCPeerConnection
 //
-// @throws UNKNOWN_ERROR - TURN is not configured on the server
+// Reports a plain error when TURN is not configured on the server. That is a
+// deployment condition rather than a per-call outcome, so it carries no code.
 //
 // @example
 //
@@ -75,9 +76,16 @@ type StreamAnswer struct {
 //
 // @returns the SDP answer plus the viewport to map input coordinates into
 //
-// @throws UNKNOWN_ERROR - the offer was empty, TURN is unconfigured, or the
+// @throws already_active - a stream is already running on this session; stop it
+// before starting another
+// @throws negotiation_failed - the browser could not agree on a connection. The
+// message carries the negotiator's own diagnostic, which is usually where the
+// actual cause is
 //
-//	browser could not negotiate the stream
+// An empty offer or an unconfigured TURN setup is a caller mistake rather than an
+// outcome, and reports as a plain error.
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -93,6 +101,9 @@ func (c *CloudBrowser) StartStream(ctx context.Context, offerSDP string) (Stream
 	if resp == nil {
 		return StreamAnswer{}, err
 	}
+	if e := commandErrorFrom("startStream", resp.GetError()); e != nil {
+		return StreamAnswer{}, e
+	}
 	return StreamAnswer{
 		AnswerSDP: resp.GetAnswerSdp(),
 		Viewport: Rect{
@@ -107,14 +118,19 @@ func (c *CloudBrowser) StartStream(ctx context.Context, offerSDP string) (Stream
 // StopStream tears down the live video stream for the session's page. It is
 // safe to call even if no stream is running.
 //
-// @throws UNKNOWN_ERROR - the stream could not be stopped
+// Reports only transport failures - a dead session, a page that is gone, a broken
+// connection. Stopping a stream that is not running is a no-op rather than a
+// failure, so there are no error codes to branch on.
 //
 // @example
 //
 //	if err := browser.StopStream(ctx); err != nil { log.Fatal(err) }
 func (c *CloudBrowser) StopStream(ctx context.Context) error {
-	_, err := c.client.StopStream(ctx, &generated.StopStreamRequest{
+	resp, err := c.client.StopStream(ctx, &generated.StopStreamRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("stopStream", resp.GetError())
 }

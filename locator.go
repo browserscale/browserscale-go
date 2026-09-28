@@ -36,10 +36,11 @@ type Locator struct {
 
 // CSS waits for / targets an element matching the given CSS selector.
 //
-// When used in [CloudBrowser.Wait], the returned Locator carries the SDK
-// defaults [DefaultVisible] (true) and [DefaultSteadyMs] (500). Override
-// per call with [Locator.Visible] / [Locator.Steady] (use `.Steady(0)` to
-// disable the steady check).
+// When used in [CloudBrowser.Wait], the condition requires the element to be
+// visible and to hold still for 500ms before it matches — the API's defaults
+// for a condition that does not set them. Override per call with
+// [Locator.Visible] / [Locator.Steady] (use `.Steady(0)` to disable the steady
+// check).
 //
 // When used as an action target (Click, etc.) the visible/steady fields
 // are ignored — there are no corresponding fields on the action requests.
@@ -55,17 +56,15 @@ type Locator struct {
 //	// As an action target.
 //	_, _ = browser.Click(ctx, browserscale.CSS("button.submit"))
 func CSS(selector string) *Locator {
-	v := DefaultVisible
-	st := DefaultSteadyMs
-	return &Locator{selector: selector, visible: &v, steadyTime: &st}
+	return &Locator{selector: selector}
 }
 
 // JS waits for / targets the result of a JavaScript expression.
 //
-// Same wait defaults as [CSS] ([DefaultVisible]=true, [DefaultSteadyMs]=500);
-// these only apply when the expression returns a DOM Element. For non-Element
-// truthy values (boolean, string, number, plain object) both fields are no-ops
-// and the condition matches as soon as the value is truthy.
+// Same wait defaults as [CSS] (visible, 500ms steady); these only apply when
+// the expression returns a DOM Element. For non-Element truthy values (boolean,
+// string, number, plain object) both are no-ops and the condition matches as
+// soon as the value is truthy.
 //
 // Use [Locator.Visible](false) / [Locator.Steady](0) on the returned Locator
 // to opt out.
@@ -78,9 +77,7 @@ func CSS(selector string) *Locator {
 //
 //	_, _ = browser.Wait(ctx, browserscale.JS("window.__ready === true"))
 func JS(expression string) *Locator {
-	v := DefaultVisible
-	st := DefaultSteadyMs
-	return &Locator{jsExpression: expression, visible: &v, steadyTime: &st}
+	return &Locator{jsExpression: expression}
 }
 
 // Node targets an element by its DevTools backendNodeId.
@@ -128,9 +125,9 @@ func At(x, y float64) *Locator {
 // Visible enforces or disables the visibility check for this Locator's
 // wait condition.
 //
-// Pass false to opt out of the default [DefaultVisible] (true). Has no
-// effect when the Locator is used as an action target — actions never
-// check visibility before dispatching.
+// Visibility is required by default, so pass false to wait for DOM presence
+// alone. Has no effect when the Locator is used as an action target — actions
+// never check visibility before dispatching.
 //
 // @param v - true to require visibility, false to skip the check
 //
@@ -144,9 +141,9 @@ func (l *Locator) Visible(v bool) *Locator { l.visible = &v; return l }
 // Steady requires the element to keep a stable position and size for at
 // least ms milliseconds before the wait matches.
 //
-// Pass 0 to disable the default [DefaultSteadyMs] (500). Has no effect for
-// JS expressions that return a non-Element value, nor when the Locator is
-// used as an action target.
+// Settling defaults to 500ms, so pass 0 to match the instant the element is
+// found. Has no effect for JS expressions that return a non-Element value, nor
+// when the Locator is used as an action target.
 //
 // @param ms - steady-state duration in milliseconds; 0 disables
 //

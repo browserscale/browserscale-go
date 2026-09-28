@@ -19,7 +19,11 @@ import (
 //	post-scroll isVisible, element bounds and the root-viewport (rootX, rootY)
 //	where the cursor ended up
 //
-// @throws UNKNOWN_ERROR - the move could not be completed
+// @throws not_found - no element matched the locator, so there was nowhere to
+// move the cursor. The only semantic failure this call has: once the target is
+// located, moving to it cannot be refused
+//
+// @see [MoveError] for recovering the code with errors.As
 //
 // @example
 //

@@ -41,11 +41,14 @@ type ReadCanvasOpts struct {
 //
 //	Width/Height, resolved frameId/backendNodeId and the OriginClean flag
 //
-// @throws INVALID_LOCATOR - target is empty, uses At(x,y), or has multiple targets
-// @throws ELEMENT_NOT_FOUND - no element matched the locator
-// @throws FRAME_NOT_FOUND - the requested frame does not exist
-// @throws TIMEOUT - the operation exceeded the server-side timeout
-// @throws PAGE_NOT_ALIVE - the page has been closed
+// @throws not_found - no element matched the locator
+// @throws not_element - the expression was truthy but did not yield an element
+// @throws not_readable - the target was found but is not a readable canvas
+//
+// A target that is empty, uses At(x, y) or names several things at once is
+// rejected before anything is sent.
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @see [CloudBrowser.ReadCanvasWith] for format, quality, or a sub-rectangle
 //
@@ -102,7 +105,7 @@ func (c *CloudBrowser) readCanvasWith(ctx context.Context, target *Locator, o Re
 	if err != nil {
 		return nil, err
 	}
-	return &ReadCanvasResult{
+	out := &ReadCanvasResult{
 		Success:       resp.Success,
 		FrameId:       resp.FrameId,
 		BackendNodeId: resp.BackendNodeId,
@@ -110,5 +113,6 @@ func (c *CloudBrowser) readCanvasWith(ctx context.Context, target *Locator, o Re
 		Width:         resp.Width,
 		Height:        resp.Height,
 		OriginClean:   resp.OriginClean,
-	}, nil
+	}
+	return out, commandErrorFrom("readCanvas", resp.GetError())
 }

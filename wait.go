@@ -33,8 +33,8 @@ func (f waitOpt) applyWait(w *waitCall) { f(w) }
 
 // Timeout overrides the [CloudBrowser.Wait] timeout.
 //
-// When omitted, [DefaultWaitTimeoutMs] (30s) is used. Pass once per Wait
-// call as one of the variadic arguments.
+// When omitted, the API's default of 30s applies. Pass once per Wait call as
+// one of the variadic arguments.
 //
 // @param ms - timeout in milliseconds
 //
@@ -53,13 +53,12 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 // wait-level arguments such as [Timeout]. When several locators are
 // supplied, the first one to match wins; the others are abandoned.
 //
-// Defaults applied automatically:
-//   - timeout: [DefaultWaitTimeoutMs] (30s) — override with [Timeout]
-//   - per-locator visible/steady: [DefaultVisible] (true) and
-//     [DefaultSteadyMs] (500) for CSS and JS locators. For JS expressions
-//     returning a non-Element value (bool/string/number/object) both
-//     flags are no-ops. Override with [Locator.Visible] / [Locator.Steady]
-//     on individual locators.
+// Anything left unset is defaulted by the API, not by this SDK:
+//   - timeout: 30s — override with [Timeout]
+//   - per-locator visible and steady: visibility required, 500ms of settling.
+//     For JS expressions returning a non-Element value (bool/string/number/
+//     object) both are no-ops. Override with [Locator.Visible] /
+//     [Locator.Steady] on individual locators.
 //
 // [Node] and [At] are not valid wait conditions — they only make sense as
 // action targets — and produce an error at send time.
@@ -100,7 +99,9 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 //	}
 //	_ = res
 func (c *CloudBrowser) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, error) {
-	wc := &waitCall{timeout: DefaultWaitTimeoutMs}
+	// timeout stays 0 unless Timeout() was passed, which leaves the field off the
+	// wire so the API applies its own default.
+	wc := &waitCall{}
 	for _, a := range args {
 		a.applyWait(wc)
 	}

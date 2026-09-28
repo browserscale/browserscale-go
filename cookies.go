@@ -38,7 +38,9 @@ type CookieParam struct {
 //
 // @returns []CookieParam, one per cookie in the context
 //
-// @throws UNKNOWN_ERROR - the cookies could not be read
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -56,6 +58,9 @@ func (c *CloudBrowser) GetCookies(ctx context.Context) ([]CookieParam, error) {
 	if err != nil {
 		return nil, err
 	}
+	if e := commandErrorFrom("getCookies", resp.GetError()); e != nil {
+		return nil, e
+	}
 	return cookiesFromProto(resp.Cookies), nil
 }
 
@@ -66,7 +71,9 @@ func (c *CloudBrowser) GetCookies(ctx context.Context) ([]CookieParam, error) {
 //
 // @param cookies - cookies to write; empty slice is a no-op
 //
-// @throws UNKNOWN_ERROR - the cookies could not be written
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -86,23 +93,31 @@ func (c *CloudBrowser) GetCookies(ctx context.Context) ([]CookieParam, error) {
 //	    },
 //	})
 func (c *CloudBrowser) SetCookies(ctx context.Context, cookies []CookieParam) error {
-	_, err := c.client.SetCookies(ctx, &generated.SetCookiesRequest{
+	resp, err := c.client.SetCookies(ctx, &generated.SetCookiesRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Cookies: cookiesToProto(cookies),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setCookies", resp.GetError())
 }
 
 // ClearCookies deletes every cookie in the browser context.
 //
-// @throws UNKNOWN_ERROR - the cookies could not be cleared
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
 //	_ = browser.ClearCookies(ctx)
 func (c *CloudBrowser) ClearCookies(ctx context.Context) error {
-	_, err := c.client.ClearCookies(ctx, &generated.ClearCookiesRequest{
+	resp, err := c.client.ClearCookies(ctx, &generated.ClearCookiesRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("clearCookies", resp.GetError())
 }

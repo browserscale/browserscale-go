@@ -26,7 +26,8 @@ import (
 //
 // @returns 16-char hex string (the first 8 bytes of sha256 of the DOM JSON)
 //
-// @throws UNKNOWN_ERROR - the hash could not be computed
+// Reports only transport failures. The hash is computed from a serialized tree,
+// so there is no semantic failure of its own and no error codes to branch on.
 //
 // @example
 //
@@ -62,7 +63,9 @@ func (c *CloudBrowser) GetDOMHash(ctx context.Context, frameId string) (string, 
 //
 //	name, trimmed textContent, visibility and bounds
 //
-// @throws UNKNOWN_ERROR - the hit-test failed
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -79,6 +82,9 @@ func (c *CloudBrowser) InspectAtPosition(ctx context.Context, x, y float64) (*In
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("inspectAtPosition", resp.GetError()); e != nil {
+		return nil, e
 	}
 	return &InspectResult{
 		BackendNodeId: resp.BackendNodeId,
@@ -99,7 +105,9 @@ func (c *CloudBrowser) InspectAtPosition(ctx context.Context, x, y float64) (*In
 // @param backendNodeId - id of the node to highlight, or <= 0 to clear
 // @param frameId - id of the frame the node lives in; empty targets the main frame
 //
-// @throws UNKNOWN_ERROR - the highlight could not be applied
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -107,12 +115,15 @@ func (c *CloudBrowser) InspectAtPosition(ctx context.Context, x, y float64) (*In
 //	    log.Fatal(err)
 //	}
 func (c *CloudBrowser) HighlightNode(ctx context.Context, backendNodeId int32, frameId string) error {
-	_, err := c.client.HighlightNode(ctx, &generated.HighlightNodeRequest{
+	resp, err := c.client.HighlightNode(ctx, &generated.HighlightNodeRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("highlight", resp.GetError())
 }
 
 // ── Keyboard / IME / selection ──
@@ -126,7 +137,11 @@ func (c *CloudBrowser) HighlightNode(ctx context.Context, backendNodeId int32, f
 //
 // @param text - the text to insert at the caret
 //
-// @throws UNKNOWN_ERROR - the text could not be inserted
+// @throws no_focus - nothing in the page holds focus, so there is no caret to
+// insert at; click the field first
+// @throws busy - another action is already running on this page
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -134,11 +149,14 @@ func (c *CloudBrowser) HighlightNode(ctx context.Context, backendNodeId int32, f
 //	    log.Fatal(err)
 //	}
 func (c *CloudBrowser) InsertText(ctx context.Context, text string) error {
-	_, err := c.client.InsertText(ctx, &generated.InsertTextRequest{
+	resp, err := c.client.InsertText(ctx, &generated.InsertTextRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Text: text,
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("insertText", resp.GetError())
 }
 
 // Type types text into the currently focused element as a per-key stream of
@@ -159,7 +177,9 @@ func (c *CloudBrowser) InsertText(ctx context.Context, text string) error {
 // @param text - the text to type as real key events
 // @param clearFirst - when true, clears the focused field (Ctrl+A, Delete) first
 //
-// @throws UNKNOWN_ERROR - the page/context was torn down mid-stream
+// Type has no semantic failure of its own: the keys land wherever focus happens
+// to be, so there is no target it can miss. Only the page or context being torn
+// down mid-stream surfaces, and that is a transport error rather than a code.
 //
 // @example
 //
@@ -177,8 +197,11 @@ func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) e
 		t := true
 		req.ClearFirst = &t
 	}
-	_, err := c.client.Type(ctx, req)
-	return err
+	resp, err := c.client.Type(ctx, req)
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("type", resp.GetError())
 }
 
 // PressKey fires a single key-down event.
@@ -192,7 +215,11 @@ func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) e
 // @param modifiers - bit-flag combination: Alt=1, Ctrl=2, Meta=4, Shift=8
 // @param location - DOM KeyboardEvent.location: 0=standard, 1=left, 2=right, 3=numpad
 //
-// @throws UNKNOWN_ERROR - the event could not be dispatched
+// @throws no_focus - nothing in the page holds focus, so the key has nowhere to
+// go; click the field first
+// @throws busy - another action is already running on this page
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -200,14 +227,17 @@ func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) e
 //	_ = browser.PressKey(ctx, "a", "KeyA", 2, 0)
 //	_ = browser.ReleaseKey(ctx, "a", "KeyA", 2, 0)
 func (c *CloudBrowser) PressKey(ctx context.Context, key, code string, modifiers, location int32) error {
-	_, err := c.client.PressKey(ctx, &generated.PressKeyRequest{
+	resp, err := c.client.PressKey(ctx, &generated.PressKeyRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Key:       key,
 		Code:      strPtr(code),
 		Modifiers: intPtr(modifiers),
 		Location:  intPtr(location),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("pressKey", resp.GetError())
 }
 
 // ReleaseKey fires a single key-up event.
@@ -222,14 +252,17 @@ func (c *CloudBrowser) PressKey(ctx context.Context, key, code string, modifiers
 //	_ = browser.PressKey(ctx, "Shift", "ShiftLeft", 0, 1)
 //	_ = browser.ReleaseKey(ctx, "Shift", "ShiftLeft", 0, 1)
 func (c *CloudBrowser) ReleaseKey(ctx context.Context, key, code string, modifiers, location int32) error {
-	_, err := c.client.ReleaseKey(ctx, &generated.ReleaseKeyRequest{
+	resp, err := c.client.ReleaseKey(ctx, &generated.ReleaseKeyRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 		Key:       key,
 		Code:      strPtr(code),
 		Modifiers: intPtr(modifiers),
 		Location:  intPtr(location),
 	})
-	return err
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("releaseKey", resp.GetError())
 }
 
 // GetSelection returns the current text selection.
@@ -240,7 +273,9 @@ func (c *CloudBrowser) ReleaseKey(ctx context.Context, key, code string, modifie
 //
 // @returns the selected text, or "" when nothing is selected
 //
-// @throws UNKNOWN_ERROR - the selection could not be read
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -255,6 +290,9 @@ func (c *CloudBrowser) GetSelection(ctx context.Context) (string, error) {
 	})
 	if err != nil {
 		return "", err
+	}
+	if e := commandErrorFrom("getSelection", resp.GetError()); e != nil {
+		return "", e
 	}
 	return resp.Text, nil
 }

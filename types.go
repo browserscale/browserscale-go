@@ -239,6 +239,10 @@ type NavigateResult struct {
 // Value falls back to the raw server string so the caller is never empty-
 // handed.
 type EvaluateResult struct {
+	// Success is false only when the expression never produced a value, in which
+	// case the error carries the reason. An expression that answers falsy is a
+	// successful evaluation, so this does not mean "the answer was false".
+	Success       bool
 	Value         any
 	BackendNodeId int32
 	IsVisible     bool
@@ -294,6 +298,53 @@ type OccluderInfo struct {
 	// the pointer goes — clear it by scrolling the target out from under it;
 	// ordinary overlays often collapse once the pointer leaves.
 	Position string
+}
+
+// CommandError is the failure detail of a command the browser carried out but
+// the page would not go along with. It is the error type for the commands that
+// have nothing to report beyond what went wrong; the richer failures have their
+// own type ([ClickError], [FillError], [DragError]) carrying the same
+// Code/Message pair plus their own detail.
+//
+// It implements the error interface, so the ordinary `res, err := ...` shape
+// keeps working and res stays readable alongside it. Recover the code with
+// errors.As:
+//
+//	res, err := browser.Evaluate(ctx, "document.title.toUpperCase()")
+//	var ce *browserscale.CommandError
+//	if errors.As(err, &ce) && ce.Code == "threw" {
+//	    // the expression itself is broken; ce.Message has the exception text
+//	}
+//
+// A CommandError never reports an outage. A dead session, a closed page or a
+// malformed call arrive as a plain transport error instead, so errors.As
+// matching here tells you the fault is in the page or in what you asked of it —
+// which is the difference between retrying and fixing your code.
+type CommandError struct {
+	// Command is the call that failed, e.g. "evaluate".
+	Command string
+	// Code is machine-stable and lowercase, and is scoped to Command: the same
+	// string can mean different things for different commands, so branch on it
+	// together with the call you made.
+	Code string
+	// Message is human-readable detail and may be empty. Never parse it; Code is
+	// the contract and this text is free to change.
+	Message string
+}
+
+// Error implements the error interface.
+func (e *CommandError) Error() string {
+	if e == nil {
+		return "command failed"
+	}
+	verb := e.Command
+	if verb == "" {
+		verb = "command"
+	}
+	if e.Message != "" {
+		return verb + " failed: " + e.Code + ": " + e.Message
+	}
+	return verb + " failed: " + e.Code
 }
 
 // ClickError is returned as the error from [CloudBrowser.Click] /

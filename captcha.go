@@ -22,9 +22,9 @@ import (
 //
 // @returns empty string on success — the solution is applied server-side
 //
-// @throws UNKNOWN_ERROR - no captcha appeared within timeoutMs, or the
-//
-//	detected captcha could not be solved within retryAmount attempts
+// Reports a plain error when no captcha appeared within timeoutMs, or when the
+// one that did could not be solved within retryAmount attempts. Neither carries a
+// code: solving runs outside the page, so there is no per-command code set here.
 //
 // @example
 //

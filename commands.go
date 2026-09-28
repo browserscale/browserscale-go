@@ -20,7 +20,9 @@ import (
 // @param proxyUsername - proxy auth user (empty for unauthenticated proxies)
 // @param proxyPassword - proxy auth password (empty for unauthenticated proxies)
 //
-// @throws UNKNOWN_ERROR - the proxy could not be applied
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -40,8 +42,11 @@ func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort
 			req.ProxyPassword = &pw
 		}
 	}
-	_, err := c.client.SetProxy(ctx, req)
-	return err
+	resp, err := c.client.SetProxy(ctx, req)
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("setProxy", resp.GetError())
 }
 
 // GetPages returns all open pages (tabs and popups) for this session's
@@ -52,7 +57,9 @@ func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort
 //
 // @returns []*PageInfo for every page currently open in the context
 //
-// @throws UNKNOWN_ERROR - the pages could not be enumerated
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -69,6 +76,9 @@ func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("getPages", resp.GetError()); e != nil {
+		return nil, e
 	}
 	out := make([]*PageInfo, len(resp.Pages))
 	for i, p := range resp.Pages {
@@ -92,7 +102,15 @@ func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
 //
 //	the main frame after navigation
 //
-// @throws UNKNOWN_ERROR - the navigation failed or timed out
+// @throws timeout - nothing committed before the deadline; the page may still be
+// loading, so a longer timeout can be the whole fix
+// @throws net_error - the URL never loaded: DNS, TLS, a refused connection, or a
+// proxy that could not reach it. The message carries the underlying net error
+// name, which is what separates a bad proxy from a bad host - worth logging
+// @throws crashed - the renderer died mid-navigation; the page is unusable and
+// has to be navigated again
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -109,6 +127,9 @@ func (c *CloudBrowser) Navigate(ctx context.Context, url string, timeoutMs float
 	if err != nil {
 		return nil, err
 	}
+	if e := commandErrorFrom("navigate", resp.GetError()); e != nil {
+		return nil, e
+	}
 	return &NavigateResult{FrameId: resp.FrameId, Url: resp.Url}, nil
 }
 
@@ -124,7 +145,11 @@ func (c *CloudBrowser) Navigate(ctx context.Context, url string, timeoutMs float
 // @param headers - extra response headers (Content-Type is set automatically)
 // @param statusCode - HTTP status code to serve; 0 means 200
 //
-// @throws UNKNOWN_ERROR - the interceptor could not be installed
+// @throws timeout - the page never requested the URL, so the prepared response
+// had nobody to hand it to; usually the navigation was cancelled or redirected
+// away before reaching it
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -141,8 +166,11 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 		s := statusCode
 		req.StatusCode = &s
 	}
-	_, err := c.client.LoadHTML(ctx, req)
-	return err
+	resp, err := c.client.LoadHTML(ctx, req)
+	if err != nil {
+		return err
+	}
+	return commandErrorFrom("loadHTML", resp.GetError())
 }
 
 // ── Evaluation ──
@@ -155,13 +183,23 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 // (BackendNodeId, IsVisible, Bounds) is populated instead — use Node(id)
 // in subsequent calls to act on it.
 //
+// A falsy answer and a broken expression are different outcomes. Returning
+// null, false or undefined is a successful evaluation and comes back as a
+// result; an expression that throws or will not compile comes back as a
+// [*CommandError], so a typo can never read as "the page says null".
+//
 // @param expression - JavaScript expression evaluated in the main frame
 //
 // @returns *EvaluateResult with either Value (for non-Element returns) or
 //
 //	BackendNodeId + IsVisible + Bounds (for Element returns)
 //
-// @throws UNKNOWN_ERROR - the expression threw or could not be compiled
+// @throws threw - the expression raised; the message carries the exception text
+// @throws not_run - it could not be compiled, or execution never started
+// @throws aborted - execution was stopped by the browser before it finished
+// @throws no_context - the frame had no live script context to evaluate in
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -170,6 +208,18 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(res.Value)
+//
+// @example
+//
+//	// Telling a false answer from a broken expression.
+//	res, err := browser.Evaluate(ctx, "window.__ready === true")
+//	var ce *browserscale.CommandError
+//	if errors.As(err, &ce) {
+//	    log.Fatalf("expression is broken: %v", ce)
+//	}
+//	if res.Value != true {
+//	    // legitimately not ready yet
+//	}
 func (c *CloudBrowser) Evaluate(ctx context.Context, expression string) (*EvaluateResult, error) {
 	return c.evaluate(ctx, "", expression)
 }
@@ -202,6 +252,7 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 		return nil, err
 	}
 	out := &EvaluateResult{
+		Success:       resp.Success,
 		BackendNodeId: resp.BackendNodeId,
 		IsVisible:     resp.IsVisible,
 		Bounds:        rectFromProto(resp.Bounds),
@@ -210,6 +261,11 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 		if err := json.Unmarshal([]byte(resp.Result), &out.Value); err != nil {
 			out.Value = resp.Result
 		}
+	}
+	// An expression that threw arrives as success=false in the payload, not as a
+	// transport error. Surfaced through err so the res, err shape is unchanged.
+	if e := resp.GetError(); e != nil {
+		return out, &CommandError{Command: "evaluate", Code: e.Code, Message: e.Message}
 	}
 	return out, nil
 }
@@ -260,7 +316,9 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 //
 // @returns JSON string in CDP DOM.Node shape
 //
-// @throws UNKNOWN_ERROR - the DOM could not be retrieved
+// Reports only transport failures - a dead session, a page that is gone, a
+// broken connection. This call has no semantic failure of its own, so there are
+// no error codes to branch on.
 //
 // @example
 //
@@ -277,6 +335,9 @@ func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) 
 	})
 	if err != nil {
 		return "", err
+	}
+	if e := commandErrorFrom("getDOM", resp.GetError()); e != nil {
+		return "", e
 	}
 	return resp.Dom, nil
 }
@@ -306,7 +367,11 @@ func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) 
 //
 // @returns the observation in the requested format, ready to hand to a model
 //
-// @throws UNKNOWN_ERROR - the observation could not be produced
+// @throws not_found - the requested scope root is not on the page, so there was
+// nothing to observe. Distinct from an observation that comes back empty, which
+// means the scope exists and holds nothing worth reporting
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -364,6 +429,9 @@ func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (s
 	if err != nil {
 		return "", err
 	}
+	if e := commandErrorFrom("getObservation", resp.GetError()); e != nil {
+		return "", e
+	}
 	return resp.Observation, nil
 }
 
@@ -386,7 +454,11 @@ func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (s
 //
 //	physical pixel Width/Height
 //
-// @throws UNKNOWN_ERROR - the screenshot could not be captured
+// @throws capture_failed - the page had no frame to copy. A page that has not
+// produced one yet, or is not being composited at the moment, has nothing to
+// hand over; retrying after it renders usually works
+//
+// @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
@@ -404,6 +476,9 @@ func (c *CloudBrowser) Screenshot(ctx context.Context, format string, quality in
 	})
 	if err != nil {
 		return nil, err
+	}
+	if e := commandErrorFrom("screenshot", resp.GetError()); e != nil {
+		return nil, e
 	}
 	return &ScreenshotResult{
 		DataBase64: resp.DataBase64,

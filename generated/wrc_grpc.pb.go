@@ -11,7 +11,6 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
-	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -25,7 +24,6 @@ const (
 	Browser_Navigate_FullMethodName               = "/browserscale.v1.Browser/Navigate"
 	Browser_LoadHTML_FullMethodName               = "/browserscale.v1.Browser/LoadHTML"
 	Browser_Evaluate_FullMethodName               = "/browserscale.v1.Browser/Evaluate"
-	Browser_Run_FullMethodName                    = "/browserscale.v1.Browser/Run"
 	Browser_WaitForAny_FullMethodName             = "/browserscale.v1.Browser/WaitForAny"
 	Browser_SelectOption_FullMethodName           = "/browserscale.v1.Browser/SelectOption"
 	Browser_ScrollTo_FullMethodName               = "/browserscale.v1.Browser/ScrollTo"
@@ -87,14 +85,13 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type BrowserClient interface {
 	// Context-level
-	SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	GetPages(ctx context.Context, in *GetPagesRequest, opts ...grpc.CallOption) (*GetPagesResponse, error)
 	// Page navigation / content
 	Navigate(ctx context.Context, in *NavigateRequest, opts ...grpc.CallOption) (*NavigateResponse, error)
-	LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// Evaluation
 	Evaluate(ctx context.Context, in *EvaluateRequest, opts ...grpc.CallOption) (*EvaluateResponse, error)
-	Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error)
 	// Waiting
 	WaitForAny(ctx context.Context, in *WaitForAnyParams, opts ...grpc.CallOption) (*WaitResult, error)
 	// Element actions
@@ -111,8 +108,8 @@ type BrowserClient interface {
 	RemoveReaction(ctx context.Context, in *RemoveReactionRequest, opts ...grpc.CallOption) (*RemoveReactionResponse, error)
 	ListReactions(ctx context.Context, in *ListReactionsRequest, opts ...grpc.CallOption) (*ListReactionsResponse, error)
 	// Network interception
-	SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	WaitForAnyRequest(ctx context.Context, in *WaitForAnyRequestRequest, opts ...grpc.CallOption) (*WaitForAnyRequestResponse, error)
 	WaitForAnyResponse(ctx context.Context, in *WaitForAnyResponseRequest, opts ...grpc.CallOption) (*WaitForAnyResponseResponse, error)
 	ModifyRequest(ctx context.Context, in *ModifyRequestRequest, opts ...grpc.CallOption) (*ModifyRequestResponse, error)
@@ -120,26 +117,26 @@ type BrowserClient interface {
 	// completes. Start/Stop are session state; the stream is a separate
 	// subscription, so a capture survives a reader reconnect and two readers
 	// can watch one capture.
-	StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	StopNetworkCapture(ctx context.Context, in *StopNetworkCaptureRequest, opts ...grpc.CallOption) (*StopNetworkCaptureResponse, error)
 	StreamNetworkExchanges(ctx context.Context, in *StreamNetworkExchangesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NetworkExchangeEvent], error)
 	// Cookies
 	GetCookies(ctx context.Context, in *GetCookiesRequest, opts ...grpc.CallOption) (*GetCookiesResponse, error)
-	SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ClearCookies(ctx context.Context, in *ClearCookiesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	ClearCookies(ctx context.Context, in *ClearCookiesRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// Storage (localStorage)
 	GetStorage(ctx context.Context, in *GetStorageRequest, opts ...grpc.CallOption) (*GetStorageResponse, error)
-	SetStorage(ctx context.Context, in *SetStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ClearStorage(ctx context.Context, in *ClearStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetStorage(ctx context.Context, in *SetStorageRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	ClearStorage(ctx context.Context, in *ClearStorageRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// Auth / DBSC (portable signed-in persona)
 	GetAuthSession(ctx context.Context, in *GetAuthSessionRequest, opts ...grpc.CallOption) (*GetAuthSessionResponse, error)
-	SetAuthSession(ctx context.Context, in *SetAuthSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	SetAuthSession(ctx context.Context, in *SetAuthSessionRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// DOM / observation
 	GetDOM(ctx context.Context, in *GetDOMRequest, opts ...grpc.CallOption) (*GetDOMResponse, error)
 	GetDOMHash(ctx context.Context, in *GetDOMHashRequest, opts ...grpc.CallOption) (*GetDOMHashResponse, error)
 	GetObservation(ctx context.Context, in *GetObservationRequest, opts ...grpc.CallOption) (*GetObservationResponse, error)
 	InspectAtPosition(ctx context.Context, in *InspectAtPositionRequest, opts ...grpc.CallOption) (*InspectAtPositionResponse, error)
-	HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
 	// StartDomMirror returns the top of the main document and from then on the
 	// browser reports changes to the part the client has actually expanded; the
@@ -158,9 +155,9 @@ type BrowserClient interface {
 	// and resyncs on ONE channel: a resync means "everything you hold is void",
 	// which is only interpretable in order against the batches around it.
 	StartDomMirror(ctx context.Context, in *StartDomMirrorRequest, opts ...grpc.CallOption) (*StartDomMirrorResponse, error)
-	StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	GetDomChildren(ctx context.Context, in *GetDomChildrenRequest, opts ...grpc.CallOption) (*GetDomChildrenResponse, error)
-	ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	RevealDomNode(ctx context.Context, in *RevealDomNodeRequest, opts ...grpc.CallOption) (*RevealDomNodeResponse, error)
 	GetDomRevision(ctx context.Context, in *GetDomRevisionRequest, opts ...grpc.CallOption) (*GetDomRevisionResponse, error)
 	StreamDomEvents(ctx context.Context, in *StreamDomEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DomEvent], error)
@@ -168,10 +165,10 @@ type BrowserClient interface {
 	Screenshot(ctx context.Context, in *ScreenshotRequest, opts ...grpc.CallOption) (*ScreenshotResponse, error)
 	ReadCanvas(ctx context.Context, in *ReadCanvasRequest, opts ...grpc.CallOption) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
-	InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	ReleaseKey(ctx context.Context, in *ReleaseKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	ReleaseKey(ctx context.Context, in *ReleaseKeyRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	GetSelection(ctx context.Context, in *GetSelectionRequest, opts ...grpc.CallOption) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(ctx context.Context, in *SolveCaptchaRequest, opts ...grpc.CallOption) (*SolveCaptchaResponse, error)
@@ -182,7 +179,7 @@ type BrowserClient interface {
 	// that offer.
 	GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error)
 	StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*StartStreamResponse, error)
-	StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*StopStreamResponse, error)
+	StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	// Scripts — automation that runs inside the browser process rather than
 	// across the network. The script gets the same `browser.*` surface this
 	// service exposes, but each call is a function call in the browser instead of
@@ -213,9 +210,9 @@ func NewBrowserClient(cc grpc.ClientConnInterface) BrowserClient {
 	return &browserClient{cc}
 }
 
-func (c *browserClient) SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetProxy_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -243,9 +240,9 @@ func (c *browserClient) Navigate(ctx context.Context, in *NavigateRequest, opts 
 	return out, nil
 }
 
-func (c *browserClient) LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_LoadHTML_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -257,16 +254,6 @@ func (c *browserClient) Evaluate(ctx context.Context, in *EvaluateRequest, opts 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EvaluateResponse)
 	err := c.cc.Invoke(ctx, Browser_Evaluate_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *browserClient) Run(ctx context.Context, in *RunRequest, opts ...grpc.CallOption) (*RunResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RunResponse)
-	err := c.cc.Invoke(ctx, Browser_Run_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -373,9 +360,9 @@ func (c *browserClient) ListReactions(ctx context.Context, in *ListReactionsRequ
 	return out, nil
 }
 
-func (c *browserClient) SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetBlockList(ctx context.Context, in *SetBlockListRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetBlockList_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -383,9 +370,9 @@ func (c *browserClient) SetBlockList(ctx context.Context, in *SetBlockListReques
 	return out, nil
 }
 
-func (c *browserClient) SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetStaticPaths(ctx context.Context, in *SetStaticPathsRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetStaticPaths_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -423,9 +410,9 @@ func (c *browserClient) ModifyRequest(ctx context.Context, in *ModifyRequestRequ
 	return out, nil
 }
 
-func (c *browserClient) StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_StartNetworkCapture_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -472,9 +459,9 @@ func (c *browserClient) GetCookies(ctx context.Context, in *GetCookiesRequest, o
 	return out, nil
 }
 
-func (c *browserClient) SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetCookies_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -482,9 +469,9 @@ func (c *browserClient) SetCookies(ctx context.Context, in *SetCookiesRequest, o
 	return out, nil
 }
 
-func (c *browserClient) ClearCookies(ctx context.Context, in *ClearCookiesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) ClearCookies(ctx context.Context, in *ClearCookiesRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_ClearCookies_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -502,9 +489,9 @@ func (c *browserClient) GetStorage(ctx context.Context, in *GetStorageRequest, o
 	return out, nil
 }
 
-func (c *browserClient) SetStorage(ctx context.Context, in *SetStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetStorage(ctx context.Context, in *SetStorageRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetStorage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -512,9 +499,9 @@ func (c *browserClient) SetStorage(ctx context.Context, in *SetStorageRequest, o
 	return out, nil
 }
 
-func (c *browserClient) ClearStorage(ctx context.Context, in *ClearStorageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) ClearStorage(ctx context.Context, in *ClearStorageRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_ClearStorage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -532,9 +519,9 @@ func (c *browserClient) GetAuthSession(ctx context.Context, in *GetAuthSessionRe
 	return out, nil
 }
 
-func (c *browserClient) SetAuthSession(ctx context.Context, in *SetAuthSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) SetAuthSession(ctx context.Context, in *SetAuthSessionRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_SetAuthSession_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -582,9 +569,9 @@ func (c *browserClient) InspectAtPosition(ctx context.Context, in *InspectAtPosi
 	return out, nil
 }
 
-func (c *browserClient) HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_HighlightNode_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -602,9 +589,9 @@ func (c *browserClient) StartDomMirror(ctx context.Context, in *StartDomMirrorRe
 	return out, nil
 }
 
-func (c *browserClient) StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) StopDomMirror(ctx context.Context, in *StopDomMirrorRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_StopDomMirror_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -622,9 +609,9 @@ func (c *browserClient) GetDomChildren(ctx context.Context, in *GetDomChildrenRe
 	return out, nil
 }
 
-func (c *browserClient) ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) ReleaseDomSubtree(ctx context.Context, in *ReleaseDomSubtreeRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_ReleaseDomSubtree_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -691,9 +678,9 @@ func (c *browserClient) ReadCanvas(ctx context.Context, in *ReadCanvasRequest, o
 	return out, nil
 }
 
-func (c *browserClient) InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) InsertText(ctx context.Context, in *InsertTextRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_InsertText_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -701,9 +688,9 @@ func (c *browserClient) InsertText(ctx context.Context, in *InsertTextRequest, o
 	return out, nil
 }
 
-func (c *browserClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_Type_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -711,9 +698,9 @@ func (c *browserClient) Type(ctx context.Context, in *TypeRequest, opts ...grpc.
 	return out, nil
 }
 
-func (c *browserClient) PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) PressKey(ctx context.Context, in *PressKeyRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_PressKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -721,9 +708,9 @@ func (c *browserClient) PressKey(ctx context.Context, in *PressKeyRequest, opts 
 	return out, nil
 }
 
-func (c *browserClient) ReleaseKey(ctx context.Context, in *ReleaseKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *browserClient) ReleaseKey(ctx context.Context, in *ReleaseKeyRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_ReleaseKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -771,9 +758,9 @@ func (c *browserClient) StartStream(ctx context.Context, in *StartStreamRequest,
 	return out, nil
 }
 
-func (c *browserClient) StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*StopStreamResponse, error) {
+func (c *browserClient) StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*CommandResult, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(StopStreamResponse)
+	out := new(CommandResult)
 	err := c.cc.Invoke(ctx, Browser_StopStream_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -845,14 +832,13 @@ type Browser_StreamScriptEventsClient = grpc.ServerStreamingClient[ScriptEvent]
 // for forward compatibility.
 type BrowserServer interface {
 	// Context-level
-	SetProxy(context.Context, *SetProxyRequest) (*emptypb.Empty, error)
+	SetProxy(context.Context, *SetProxyRequest) (*CommandResult, error)
 	GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error)
 	// Page navigation / content
 	Navigate(context.Context, *NavigateRequest) (*NavigateResponse, error)
-	LoadHTML(context.Context, *LoadHTMLRequest) (*emptypb.Empty, error)
+	LoadHTML(context.Context, *LoadHTMLRequest) (*CommandResult, error)
 	// Evaluation
 	Evaluate(context.Context, *EvaluateRequest) (*EvaluateResponse, error)
-	Run(context.Context, *RunRequest) (*RunResponse, error)
 	// Waiting
 	WaitForAny(context.Context, *WaitForAnyParams) (*WaitResult, error)
 	// Element actions
@@ -869,8 +855,8 @@ type BrowserServer interface {
 	RemoveReaction(context.Context, *RemoveReactionRequest) (*RemoveReactionResponse, error)
 	ListReactions(context.Context, *ListReactionsRequest) (*ListReactionsResponse, error)
 	// Network interception
-	SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error)
-	SetStaticPaths(context.Context, *SetStaticPathsRequest) (*emptypb.Empty, error)
+	SetBlockList(context.Context, *SetBlockListRequest) (*CommandResult, error)
+	SetStaticPaths(context.Context, *SetStaticPathsRequest) (*CommandResult, error)
 	WaitForAnyRequest(context.Context, *WaitForAnyRequestRequest) (*WaitForAnyRequestResponse, error)
 	WaitForAnyResponse(context.Context, *WaitForAnyResponseRequest) (*WaitForAnyResponseResponse, error)
 	ModifyRequest(context.Context, *ModifyRequestRequest) (*ModifyRequestResponse, error)
@@ -878,26 +864,26 @@ type BrowserServer interface {
 	// completes. Start/Stop are session state; the stream is a separate
 	// subscription, so a capture survives a reader reconnect and two readers
 	// can watch one capture.
-	StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*emptypb.Empty, error)
+	StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*CommandResult, error)
 	StopNetworkCapture(context.Context, *StopNetworkCaptureRequest) (*StopNetworkCaptureResponse, error)
 	StreamNetworkExchanges(*StreamNetworkExchangesRequest, grpc.ServerStreamingServer[NetworkExchangeEvent]) error
 	// Cookies
 	GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error)
-	SetCookies(context.Context, *SetCookiesRequest) (*emptypb.Empty, error)
-	ClearCookies(context.Context, *ClearCookiesRequest) (*emptypb.Empty, error)
+	SetCookies(context.Context, *SetCookiesRequest) (*CommandResult, error)
+	ClearCookies(context.Context, *ClearCookiesRequest) (*CommandResult, error)
 	// Storage (localStorage)
 	GetStorage(context.Context, *GetStorageRequest) (*GetStorageResponse, error)
-	SetStorage(context.Context, *SetStorageRequest) (*emptypb.Empty, error)
-	ClearStorage(context.Context, *ClearStorageRequest) (*emptypb.Empty, error)
+	SetStorage(context.Context, *SetStorageRequest) (*CommandResult, error)
+	ClearStorage(context.Context, *ClearStorageRequest) (*CommandResult, error)
 	// Auth / DBSC (portable signed-in persona)
 	GetAuthSession(context.Context, *GetAuthSessionRequest) (*GetAuthSessionResponse, error)
-	SetAuthSession(context.Context, *SetAuthSessionRequest) (*emptypb.Empty, error)
+	SetAuthSession(context.Context, *SetAuthSessionRequest) (*CommandResult, error)
 	// DOM / observation
 	GetDOM(context.Context, *GetDOMRequest) (*GetDOMResponse, error)
 	GetDOMHash(context.Context, *GetDOMHashRequest) (*GetDOMHashResponse, error)
 	GetObservation(context.Context, *GetObservationRequest) (*GetObservationResponse, error)
 	InspectAtPosition(context.Context, *InspectAtPositionRequest) (*InspectAtPositionResponse, error)
-	HighlightNode(context.Context, *HighlightNodeRequest) (*emptypb.Empty, error)
+	HighlightNode(context.Context, *HighlightNodeRequest) (*CommandResult, error)
 	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
 	// StartDomMirror returns the top of the main document and from then on the
 	// browser reports changes to the part the client has actually expanded; the
@@ -916,9 +902,9 @@ type BrowserServer interface {
 	// and resyncs on ONE channel: a resync means "everything you hold is void",
 	// which is only interpretable in order against the batches around it.
 	StartDomMirror(context.Context, *StartDomMirrorRequest) (*StartDomMirrorResponse, error)
-	StopDomMirror(context.Context, *StopDomMirrorRequest) (*emptypb.Empty, error)
+	StopDomMirror(context.Context, *StopDomMirrorRequest) (*CommandResult, error)
 	GetDomChildren(context.Context, *GetDomChildrenRequest) (*GetDomChildrenResponse, error)
-	ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*emptypb.Empty, error)
+	ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*CommandResult, error)
 	RevealDomNode(context.Context, *RevealDomNodeRequest) (*RevealDomNodeResponse, error)
 	GetDomRevision(context.Context, *GetDomRevisionRequest) (*GetDomRevisionResponse, error)
 	StreamDomEvents(*StreamDomEventsRequest, grpc.ServerStreamingServer[DomEvent]) error
@@ -926,10 +912,10 @@ type BrowserServer interface {
 	Screenshot(context.Context, *ScreenshotRequest) (*ScreenshotResponse, error)
 	ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error)
 	// Keyboard / IME (used by the live browser UI on top of the WebRTC stream)
-	InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error)
-	Type(context.Context, *TypeRequest) (*emptypb.Empty, error)
-	PressKey(context.Context, *PressKeyRequest) (*emptypb.Empty, error)
-	ReleaseKey(context.Context, *ReleaseKeyRequest) (*emptypb.Empty, error)
+	InsertText(context.Context, *InsertTextRequest) (*CommandResult, error)
+	Type(context.Context, *TypeRequest) (*CommandResult, error)
+	PressKey(context.Context, *PressKeyRequest) (*CommandResult, error)
+	ReleaseKey(context.Context, *ReleaseKeyRequest) (*CommandResult, error)
 	GetSelection(context.Context, *GetSelectionRequest) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(context.Context, *SolveCaptchaRequest) (*SolveCaptchaResponse, error)
@@ -940,7 +926,7 @@ type BrowserServer interface {
 	// that offer.
 	GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error)
 	StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error)
-	StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error)
+	StopStream(context.Context, *StopStreamRequest) (*CommandResult, error)
 	// Scripts — automation that runs inside the browser process rather than
 	// across the network. The script gets the same `browser.*` surface this
 	// service exposes, but each call is a function call in the browser instead of
@@ -971,7 +957,7 @@ type BrowserServer interface {
 // pointer dereference when methods are called.
 type UnimplementedBrowserServer struct{}
 
-func (UnimplementedBrowserServer) SetProxy(context.Context, *SetProxyRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetProxy(context.Context, *SetProxyRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetProxy not implemented")
 }
 func (UnimplementedBrowserServer) GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error) {
@@ -980,14 +966,11 @@ func (UnimplementedBrowserServer) GetPages(context.Context, *GetPagesRequest) (*
 func (UnimplementedBrowserServer) Navigate(context.Context, *NavigateRequest) (*NavigateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Navigate not implemented")
 }
-func (UnimplementedBrowserServer) LoadHTML(context.Context, *LoadHTMLRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) LoadHTML(context.Context, *LoadHTMLRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LoadHTML not implemented")
 }
 func (UnimplementedBrowserServer) Evaluate(context.Context, *EvaluateRequest) (*EvaluateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Evaluate not implemented")
-}
-func (UnimplementedBrowserServer) Run(context.Context, *RunRequest) (*RunResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Run not implemented")
 }
 func (UnimplementedBrowserServer) WaitForAny(context.Context, *WaitForAnyParams) (*WaitResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method WaitForAny not implemented")
@@ -1019,10 +1002,10 @@ func (UnimplementedBrowserServer) RemoveReaction(context.Context, *RemoveReactio
 func (UnimplementedBrowserServer) ListReactions(context.Context, *ListReactionsRequest) (*ListReactionsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListReactions not implemented")
 }
-func (UnimplementedBrowserServer) SetBlockList(context.Context, *SetBlockListRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetBlockList(context.Context, *SetBlockListRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetBlockList not implemented")
 }
-func (UnimplementedBrowserServer) SetStaticPaths(context.Context, *SetStaticPathsRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetStaticPaths(context.Context, *SetStaticPathsRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetStaticPaths not implemented")
 }
 func (UnimplementedBrowserServer) WaitForAnyRequest(context.Context, *WaitForAnyRequestRequest) (*WaitForAnyRequestResponse, error) {
@@ -1034,7 +1017,7 @@ func (UnimplementedBrowserServer) WaitForAnyResponse(context.Context, *WaitForAn
 func (UnimplementedBrowserServer) ModifyRequest(context.Context, *ModifyRequestRequest) (*ModifyRequestResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ModifyRequest not implemented")
 }
-func (UnimplementedBrowserServer) StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartNetworkCapture not implemented")
 }
 func (UnimplementedBrowserServer) StopNetworkCapture(context.Context, *StopNetworkCaptureRequest) (*StopNetworkCaptureResponse, error) {
@@ -1046,25 +1029,25 @@ func (UnimplementedBrowserServer) StreamNetworkExchanges(*StreamNetworkExchanges
 func (UnimplementedBrowserServer) GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCookies not implemented")
 }
-func (UnimplementedBrowserServer) SetCookies(context.Context, *SetCookiesRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetCookies(context.Context, *SetCookiesRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetCookies not implemented")
 }
-func (UnimplementedBrowserServer) ClearCookies(context.Context, *ClearCookiesRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) ClearCookies(context.Context, *ClearCookiesRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearCookies not implemented")
 }
 func (UnimplementedBrowserServer) GetStorage(context.Context, *GetStorageRequest) (*GetStorageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStorage not implemented")
 }
-func (UnimplementedBrowserServer) SetStorage(context.Context, *SetStorageRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetStorage(context.Context, *SetStorageRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetStorage not implemented")
 }
-func (UnimplementedBrowserServer) ClearStorage(context.Context, *ClearStorageRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) ClearStorage(context.Context, *ClearStorageRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearStorage not implemented")
 }
 func (UnimplementedBrowserServer) GetAuthSession(context.Context, *GetAuthSessionRequest) (*GetAuthSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthSession not implemented")
 }
-func (UnimplementedBrowserServer) SetAuthSession(context.Context, *SetAuthSessionRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) SetAuthSession(context.Context, *SetAuthSessionRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetAuthSession not implemented")
 }
 func (UnimplementedBrowserServer) GetDOM(context.Context, *GetDOMRequest) (*GetDOMResponse, error) {
@@ -1079,19 +1062,19 @@ func (UnimplementedBrowserServer) GetObservation(context.Context, *GetObservatio
 func (UnimplementedBrowserServer) InspectAtPosition(context.Context, *InspectAtPositionRequest) (*InspectAtPositionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InspectAtPosition not implemented")
 }
-func (UnimplementedBrowserServer) HighlightNode(context.Context, *HighlightNodeRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) HighlightNode(context.Context, *HighlightNodeRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HighlightNode not implemented")
 }
 func (UnimplementedBrowserServer) StartDomMirror(context.Context, *StartDomMirrorRequest) (*StartDomMirrorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartDomMirror not implemented")
 }
-func (UnimplementedBrowserServer) StopDomMirror(context.Context, *StopDomMirrorRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) StopDomMirror(context.Context, *StopDomMirrorRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopDomMirror not implemented")
 }
 func (UnimplementedBrowserServer) GetDomChildren(context.Context, *GetDomChildrenRequest) (*GetDomChildrenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDomChildren not implemented")
 }
-func (UnimplementedBrowserServer) ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) ReleaseDomSubtree(context.Context, *ReleaseDomSubtreeRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReleaseDomSubtree not implemented")
 }
 func (UnimplementedBrowserServer) RevealDomNode(context.Context, *RevealDomNodeRequest) (*RevealDomNodeResponse, error) {
@@ -1109,16 +1092,16 @@ func (UnimplementedBrowserServer) Screenshot(context.Context, *ScreenshotRequest
 func (UnimplementedBrowserServer) ReadCanvas(context.Context, *ReadCanvasRequest) (*ReadCanvasResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReadCanvas not implemented")
 }
-func (UnimplementedBrowserServer) InsertText(context.Context, *InsertTextRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) InsertText(context.Context, *InsertTextRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method InsertText not implemented")
 }
-func (UnimplementedBrowserServer) Type(context.Context, *TypeRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) Type(context.Context, *TypeRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Type not implemented")
 }
-func (UnimplementedBrowserServer) PressKey(context.Context, *PressKeyRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) PressKey(context.Context, *PressKeyRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PressKey not implemented")
 }
-func (UnimplementedBrowserServer) ReleaseKey(context.Context, *ReleaseKeyRequest) (*emptypb.Empty, error) {
+func (UnimplementedBrowserServer) ReleaseKey(context.Context, *ReleaseKeyRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReleaseKey not implemented")
 }
 func (UnimplementedBrowserServer) GetSelection(context.Context, *GetSelectionRequest) (*GetSelectionResponse, error) {
@@ -1133,7 +1116,7 @@ func (UnimplementedBrowserServer) GetStreamConfig(context.Context, *GetStreamCon
 func (UnimplementedBrowserServer) StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartStream not implemented")
 }
-func (UnimplementedBrowserServer) StopStream(context.Context, *StopStreamRequest) (*StopStreamResponse, error) {
+func (UnimplementedBrowserServer) StopStream(context.Context, *StopStreamRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StopStream not implemented")
 }
 func (UnimplementedBrowserServer) RunScript(context.Context, *RunScriptRequest) (*RunScriptResponse, error) {
@@ -1258,24 +1241,6 @@ func _Browser_Evaluate_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BrowserServer).Evaluate(ctx, req.(*EvaluateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Browser_Run_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RunRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(BrowserServer).Run(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: Browser_Run_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(BrowserServer).Run(ctx, req.(*RunRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2257,10 +2222,6 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Evaluate",
 			Handler:    _Browser_Evaluate_Handler,
-		},
-		{
-			MethodName: "Run",
-			Handler:    _Browser_Run_Handler,
 		},
 		{
 			MethodName: "WaitForAny",
