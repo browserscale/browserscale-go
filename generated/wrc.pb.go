@@ -3305,6 +3305,15 @@ type SessionUsage struct {
 	// Child frames created in the session's pages, whether or not they got a
 	// process of their own.
 	FramesCreated int32 `protobuf:"varint,7,opt,name=frames_created,json=framesCreated,proto3" json:"frames_created,omitempty"`
+	// Bytes the session's pages, workers and service workers received over the
+	// network: HTTP responses with their headers, as transferred (before
+	// decompression), and WebSocket messages. Responses served from the
+	// browser's cache count nothing. A download in progress is counted while it
+	// runs, at most about a second behind.
+	BytesReceived float64 `protobuf:"fixed64,8,opt,name=bytes_received,json=bytesReceived,proto3" json:"bytes_received,omitempty"`
+	// Bytes they sent the same way: HTTP requests with headers and bodies, and
+	// WebSocket messages.
+	BytesSent     float64 `protobuf:"fixed64,9,opt,name=bytes_sent,json=bytesSent,proto3" json:"bytes_sent,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3384,6 +3393,20 @@ func (x *SessionUsage) GetRenderersUsed() int32 {
 func (x *SessionUsage) GetFramesCreated() int32 {
 	if x != nil {
 		return x.FramesCreated
+	}
+	return 0
+}
+
+func (x *SessionUsage) GetBytesReceived() float64 {
+	if x != nil {
+		return x.BytesReceived
+	}
+	return 0
+}
+
+func (x *SessionUsage) GetBytesSent() float64 {
+	if x != nil {
+		return x.BytesSent
 	}
 	return 0
 }
@@ -11269,7 +11292,7 @@ const file_wrc_proto_rawDesc = "" +
 	"\x05pages\x18\x01 \x03(\v2\x19.browserscale.v1.PageInfoR\x05pages\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\x128\n" +
 	"\x05error\x18\x03 \x01(\v2\x1d.browserscale.v1.CommandErrorH\x00R\x05error\x88\x01\x01B\b\n" +
-	"\x06_error\"\xfb\x01\n" +
+	"\x06_error\"\xc1\x02\n" +
 	"\fSessionUsage\x12\x1b\n" +
 	"\twall_time\x18\x01 \x01(\x01R\bwallTime\x12\x19\n" +
 	"\bcpu_time\x18\x02 \x01(\x01R\acpuTime\x12\x1d\n" +
@@ -11279,7 +11302,10 @@ const file_wrc_proto_rawDesc = "" +
 	"\vpeak_memory\x18\x05 \x01(\x01R\n" +
 	"peakMemory\x12%\n" +
 	"\x0erenderers_used\x18\x06 \x01(\x05R\rrenderersUsed\x12%\n" +
-	"\x0eframes_created\x18\a \x01(\x05R\rframesCreated\"I\n" +
+	"\x0eframes_created\x18\a \x01(\x05R\rframesCreated\x12%\n" +
+	"\x0ebytes_received\x18\b \x01(\x01R\rbytesReceived\x12\x1d\n" +
+	"\n" +
+	"bytes_sent\x18\t \x01(\x01R\tbytesSent\"I\n" +
 	"\x0fGetUsageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +

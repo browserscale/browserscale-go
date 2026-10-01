@@ -53,6 +53,8 @@ type usageJSON struct {
 	PeakMemory    float64 `json:"peakMemory"`
 	RenderersUsed int     `json:"renderersUsed"`
 	FramesCreated int     `json:"framesCreated"`
+	BytesReceived float64 `json:"bytesReceived"`
+	BytesSent     float64 `json:"bytesSent"`
 }
 
 func (u *usageJSON) toSessionUsage() *SessionUsage {
@@ -67,6 +69,8 @@ func (u *usageJSON) toSessionUsage() *SessionUsage {
 		PeakMemory:    int64(u.PeakMemory),
 		RenderersUsed: u.RenderersUsed,
 		FramesCreated: u.FramesCreated,
+		BytesReceived: int64(u.BytesReceived),
+		BytesSent:     int64(u.BytesSent),
 	}
 }
 

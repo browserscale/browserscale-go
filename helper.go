@@ -55,6 +55,8 @@ func sessionUsageFromProto(u *generated.SessionUsage) *SessionUsage {
 		PeakMemory:    int64(u.PeakMemory),
 		RenderersUsed: int(u.RenderersUsed),
 		FramesCreated: int(u.FramesCreated),
+		BytesReceived: int64(u.BytesReceived),
+		BytesSent:     int64(u.BytesSent),
 	}
 }
 

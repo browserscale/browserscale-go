@@ -64,6 +64,15 @@ type SessionUsage struct {
 	// FramesCreated counts the child frames created in the session's pages,
 	// whether or not they got a process of their own.
 	FramesCreated int
+	// BytesReceived is what the session's pages, workers and service workers
+	// received over the network, in bytes: HTTP responses with their headers,
+	// as transferred (before decompression), and WebSocket messages. Responses
+	// served from the browser's cache count nothing. A download in progress is
+	// counted while it runs, at most about a second behind.
+	BytesReceived int64
+	// BytesSent is what they sent the same way, in bytes: HTTP requests with
+	// headers and bodies, and WebSocket messages.
+	BytesSent int64
 }
 
 // Header is a single HTTP header (name/value pair) on an intercepted
