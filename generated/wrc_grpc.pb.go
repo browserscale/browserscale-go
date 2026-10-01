@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	Browser_SetProxy_FullMethodName               = "/browserscale.v1.Browser/SetProxy"
 	Browser_GetPages_FullMethodName               = "/browserscale.v1.Browser/GetPages"
+	Browser_GetUsage_FullMethodName               = "/browserscale.v1.Browser/GetUsage"
 	Browser_Navigate_FullMethodName               = "/browserscale.v1.Browser/Navigate"
 	Browser_LoadHTML_FullMethodName               = "/browserscale.v1.Browser/LoadHTML"
 	Browser_Evaluate_FullMethodName               = "/browserscale.v1.Browser/Evaluate"
@@ -87,6 +88,9 @@ type BrowserClient interface {
 	// Context-level
 	SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	GetPages(ctx context.Context, in *GetPagesRequest, opts ...grpc.CallOption) (*GetPagesResponse, error)
+	// What the session has consumed so far. The final figures need no call of
+	// their own: the stop endpoint returns them.
+	GetUsage(ctx context.Context, in *GetUsageRequest, opts ...grpc.CallOption) (*GetUsageResponse, error)
 	// Page navigation / content
 	Navigate(ctx context.Context, in *NavigateRequest, opts ...grpc.CallOption) (*NavigateResponse, error)
 	LoadHTML(ctx context.Context, in *LoadHTMLRequest, opts ...grpc.CallOption) (*CommandResult, error)
@@ -224,6 +228,16 @@ func (c *browserClient) GetPages(ctx context.Context, in *GetPagesRequest, opts 
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPagesResponse)
 	err := c.cc.Invoke(ctx, Browser_GetPages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) GetUsage(ctx context.Context, in *GetUsageRequest, opts ...grpc.CallOption) (*GetUsageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetUsageResponse)
+	err := c.cc.Invoke(ctx, Browser_GetUsage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -834,6 +848,9 @@ type BrowserServer interface {
 	// Context-level
 	SetProxy(context.Context, *SetProxyRequest) (*CommandResult, error)
 	GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error)
+	// What the session has consumed so far. The final figures need no call of
+	// their own: the stop endpoint returns them.
+	GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error)
 	// Page navigation / content
 	Navigate(context.Context, *NavigateRequest) (*NavigateResponse, error)
 	LoadHTML(context.Context, *LoadHTMLRequest) (*CommandResult, error)
@@ -962,6 +979,9 @@ func (UnimplementedBrowserServer) SetProxy(context.Context, *SetProxyRequest) (*
 }
 func (UnimplementedBrowserServer) GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPages not implemented")
+}
+func (UnimplementedBrowserServer) GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetUsage not implemented")
 }
 func (UnimplementedBrowserServer) Navigate(context.Context, *NavigateRequest) (*NavigateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Navigate not implemented")
@@ -1187,6 +1207,24 @@ func _Browser_GetPages_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(BrowserServer).GetPages(ctx, req.(*GetPagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_GetUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetUsageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetUsage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetUsage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetUsage(ctx, req.(*GetUsageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2210,6 +2248,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPages",
 			Handler:    _Browser_GetPages_Handler,
+		},
+		{
+			MethodName: "GetUsage",
+			Handler:    _Browser_GetUsage_Handler,
 		},
 		{
 			MethodName: "Navigate",

@@ -231,7 +231,8 @@ session or the connection failed, never the page.
 | `CaptureNetwork(ctx, opts, onExchange)` | Stream every request the session completes, optionally with response bodies. |
 | `MirrorDom(ctx, opts, onChange, onResync)` | Live, incrementally updated copy of the page's DOM across every frame. |
 | `SolveCaptcha(ctx, …)` | Solve an interactive challenge in the live browser. |
-| `Close()` / `StopBrowser()` | Release the rental. `CloseConn()` detaches without releasing it. |
+| `GetUsage(ctx)` | CPU time, memory (min / average / peak), renderers and frames the session has used so far. |
+| `StopBrowser(ctx)` / `Close()` | Release the rental; `StopBrowser` returns the session's final usage. `CloseConn()` detaches without releasing it. |
 
 Locators: `CSS(...)`, `JS(...)` (target by page logic when CSS can't). Plus
 cookies (`GetCookies`/`SetCookies`/`ClearCookies`), storage,

@@ -43,6 +43,21 @@ func frameInfoFromProto(f *generated.FrameInfo) *FrameInfo {
 	return out
 }
 
+func sessionUsageFromProto(u *generated.SessionUsage) *SessionUsage {
+	if u == nil {
+		return nil
+	}
+	return &SessionUsage{
+		WallTime:      u.WallTime,
+		CpuTime:       u.CpuTime,
+		MinMemory:     int64(u.MinMemory),
+		AverageMemory: int64(u.AverageMemory),
+		PeakMemory:    int64(u.PeakMemory),
+		RenderersUsed: int(u.RenderersUsed),
+		FramesCreated: int(u.FramesCreated),
+	}
+}
+
 func pageInfoFromProto(p *generated.PageInfo) *PageInfo {
 	if p == nil {
 		return nil

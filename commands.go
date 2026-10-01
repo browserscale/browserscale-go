@@ -3,6 +3,7 @@ package browserscale
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	"github.com/browserscale/browserscale-go/generated"
 )
@@ -85,6 +86,40 @@ func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
 		out[i] = pageInfoFromProto(p)
 	}
 	return out, nil
+}
+
+// GetUsage reports what this session's browser has consumed so far.
+//
+// Everything but MinMemory and AverageMemory only ever grows, so polling and
+// diffing two readings gives the cost of what ran in between. The final figures
+// need no call of their own: [CloudBrowser.StopBrowser] returns them.
+//
+// @returns *SessionUsage as of now
+//
+// Reports only transport failures - a dead session, a broken connection. This
+// call has no semantic failure of its own, so there are no error codes to
+// branch on.
+//
+// @example
+//
+//	before, _ := browser.GetUsage(ctx)
+//	_, _ = browser.Navigate(ctx, "https://example.com", 0)
+//	after, _ := browser.GetUsage(ctx)
+//	fmt.Printf("navigation cost %.2fs of CPU\n", after.CpuTime-before.CpuTime)
+func (c *CloudBrowser) GetUsage(ctx context.Context) (*SessionUsage, error) {
+	resp, err := c.client.GetUsage(ctx, &generated.GetUsageRequest{
+		SessionId: c.sessionId, ApiKey: c.apiKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if e := commandErrorFrom("getUsage", resp.GetError()); e != nil {
+		return nil, e
+	}
+	if resp.Usage == nil {
+		return nil, errors.New("getUsage: the server sent no usage")
+	}
+	return sessionUsageFromProto(resp.Usage), nil
 }
 
 // ── Page navigation / content ──

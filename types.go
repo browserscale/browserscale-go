@@ -31,6 +31,41 @@ type PageInfo struct {
 	FrameTree        FrameInfo
 }
 
+// SessionUsage is what a session's browser has consumed since the session
+// started: the CPU time and memory of every process that rendered its pages —
+// main frames, cross-site iframes and the workers they host — including
+// processes that have since exited. Work done on the session's behalf in
+// processes it shares with other sessions is not included.
+//
+// [CloudBrowser.GetUsage] reports it while the session runs, and
+// [CloudBrowser.StopBrowser] returns the final figures, so there is no need to
+// read it right before stopping.
+type SessionUsage struct {
+	// WallTime is the real time since the session's browser was created, in
+	// seconds.
+	WallTime float64
+	// CpuTime is user plus kernel CPU time in seconds. Only time a thread
+	// actually ran on a core counts; waiting and idling do not.
+	CpuTime float64
+	// MinMemory is the least memory the session held once its browser was
+	// ready, in bytes. Sampled about once a second.
+	MinMemory int64
+	// AverageMemory is the memory held, averaged over WallTime, in bytes;
+	// AverageMemory * WallTime is the memory-time used. Sampled about once a
+	// second, so short spikes count toward the peak but barely toward the
+	// average.
+	AverageMemory int64
+	// PeakMemory is the most memory held at any one moment, in bytes.
+	PeakMemory int64
+	// RenderersUsed counts the renderer processes that hosted at least one of
+	// the session's frames: one per site its pages and cross-site iframes
+	// needed.
+	RenderersUsed int
+	// FramesCreated counts the child frames created in the session's pages,
+	// whether or not they got a process of their own.
+	FramesCreated int
+}
+
 // Header is a single HTTP header (name/value pair) on an intercepted
 // request or response.
 type Header struct {

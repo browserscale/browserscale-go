@@ -40,8 +40,34 @@ type stopRequest struct {
 }
 
 type stopResponse struct {
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
+	Success bool       `json:"success"`
+	Error   string     `json:"error,omitempty"`
+	Usage   *usageJSON `json:"usage,omitempty"`
+}
+
+type usageJSON struct {
+	WallTime      float64 `json:"wallTime"`
+	CpuTime       float64 `json:"cpuTime"`
+	MinMemory     float64 `json:"minMemory"`
+	AverageMemory float64 `json:"averageMemory"`
+	PeakMemory    float64 `json:"peakMemory"`
+	RenderersUsed int     `json:"renderersUsed"`
+	FramesCreated int     `json:"framesCreated"`
+}
+
+func (u *usageJSON) toSessionUsage() *SessionUsage {
+	if u == nil {
+		return nil
+	}
+	return &SessionUsage{
+		WallTime:      u.WallTime,
+		CpuTime:       u.CpuTime,
+		MinMemory:     int64(u.MinMemory),
+		AverageMemory: int64(u.AverageMemory),
+		PeakMemory:    int64(u.PeakMemory),
+		RenderersUsed: u.RenderersUsed,
+		FramesCreated: u.FramesCreated,
+	}
 }
 
 var ApiEndpoint = "https://api.browserscale.cloud"
@@ -170,25 +196,25 @@ func callListSessionsApi(apiKey string) ([]BrowserInfo, error) {
 	return response.Sessions, nil
 }
 
-func callStopBrowserApi(apiKey string, sessionId string) error {
+func callStopBrowserApi(apiKey string, sessionId string) (*SessionUsage, error) {
 	stopData := stopRequest{SessionId: sessionId, APIKey: apiKey}
 	stopJSON, err := json.Marshal(stopData)
 	if err != nil {
-		return fmt.Errorf("failed to marshal stop request: %v", err)
+		return nil, fmt.Errorf("failed to marshal stop request: %v", err)
 	}
 
 	resp, err := http.Post(ApiEndpoint+"/stop", "application/json", bytes.NewBuffer(stopJSON))
 	if err != nil {
-		return fmt.Errorf("failed to stop browser: %v", err)
+		return nil, fmt.Errorf("failed to stop browser: %v", err)
 	}
 	defer resp.Body.Close()
 
 	var response stopResponse
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return fmt.Errorf("failed to decode stop response: %v", err)
+		return nil, fmt.Errorf("failed to decode stop response: %v", err)
 	}
 	if !response.Success {
-		return fmt.Errorf("failed to stop browser: %s", response.Error)
+		return nil, fmt.Errorf("failed to stop browser: %s", response.Error)
 	}
-	return nil
+	return response.Usage.toSessionUsage(), nil
 }

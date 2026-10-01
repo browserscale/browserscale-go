@@ -61,7 +61,7 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 
 	conn, err := dialGrpc(rentResp.GrpcUrl)
 	if err != nil {
-		_ = callStopBrowserApi(config.apiKey, rentResp.SessionId)
+		_, _ = callStopBrowserApi(config.apiKey, rentResp.SessionId)
 		return nil, err
 	}
 
@@ -126,27 +126,41 @@ func ConnectSession(ctx context.Context, grpcUrl string, apiKey string, sessionI
 // underlying gRPC connection. Safe to call multiple times — subsequent
 // calls on a closed connection return an error from the second close.
 //
+// @returns *SessionUsage what the session consumed over its whole life, read
+//
+//	as it was torn down - no [CloudBrowser.GetUsage] call is needed before
+//	stopping. Nil when the server could not report it.
+//
 // Reports a plain error when the stop API or the connection close fails. The
 // session is released either way; retrying a stop is safe.
 //
-// @see [CloudBrowser.Close] - same operation with a background context
+// @see [CloudBrowser.Close] - same operation with a background context, for defer
 //
 // @example
 //
-//	defer browser.StopBrowser(context.Background())
-func (c *CloudBrowser) StopBrowser(ctx context.Context) error {
-	stopErr := callStopBrowserApi(c.apiKey, c.sessionId)
+//	usage, err := browser.StopBrowser(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	if usage != nil {
+//	    fmt.Printf("ran %.0fs, %.1fs CPU, peak %d MB\n",
+//	        usage.WallTime, usage.CpuTime, usage.PeakMemory>>20)
+//	}
+func (c *CloudBrowser) StopBrowser(ctx context.Context) (*SessionUsage, error) {
+	usage, stopErr := callStopBrowserApi(c.apiKey, c.sessionId)
 	closeErr := c.conn.Close()
 	if stopErr != nil {
-		return stopErr
+		return nil, stopErr
 	}
-	return closeErr
+	return usage, closeErr
 }
 
-// Close is the defer-friendly alias for [CloudBrowser.StopBrowser] that uses
-// a background context.
+// Close is the defer-friendly form of [CloudBrowser.StopBrowser]: it uses a
+// background context and drops the final usage. Call StopBrowser instead when
+// you want the usage.
 //
-// @inheritDoc [CloudBrowser.StopBrowser]
+// Reports a plain error when the stop API or the connection close fails. The
+// session is released either way; retrying a stop is safe.
 //
 // @example
 //
@@ -154,7 +168,8 @@ func (c *CloudBrowser) StopBrowser(ctx context.Context) error {
 //	if err != nil { log.Fatal(err) }
 //	defer browser.Close()
 func (c *CloudBrowser) Close() error {
-	return c.StopBrowser(context.Background())
+	_, err := c.StopBrowser(context.Background())
+	return err
 }
 
 // CloseConn closes only the gRPC connection, leaving the server-side session
@@ -187,13 +202,17 @@ func (c *CloudBrowser) CloseConn() error {
 // @param apiKey - API key the session was rented with
 // @param sessionId - id of the session to release
 //
+// @returns *SessionUsage what the session consumed over its whole life; nil
+//
+//	when the server could not report it
+//
 // Reports a plain error when the stop API rejects the request. Stopping a session
 // that is already gone is a no-op rather than a failure.
 //
 // @example
 //
-//	_ = browserscale.StopBrowser(context.Background(), apiKey, sessionId)
-func StopBrowser(ctx context.Context, apiKey string, sessionId string) error {
+//	usage, err := browserscale.StopBrowser(context.Background(), apiKey, sessionId)
+func StopBrowser(ctx context.Context, apiKey string, sessionId string) (*SessionUsage, error) {
 	return callStopBrowserApi(apiKey, sessionId)
 }
 
