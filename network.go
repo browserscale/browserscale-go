@@ -310,7 +310,9 @@ func (c *CloudBrowser) ModifyRequest(ctx context.Context, urlPattern, body strin
 // Network capture
 // ──────────────────────────────────────────────────────────────────────
 
-// NetworkBodies selects how much of a response body network capture keeps.
+// NetworkBodies selects which response bodies network capture keeps. Kept
+// bodies are not part of the exchange; read them with
+// [CloudBrowser.ReadNetworkBody].
 type NetworkBodies string
 
 const (
@@ -319,16 +321,15 @@ const (
 	// NetworkBodiesText keeps bodies whose MIME type is textual — text/*,
 	// JSON, XML, JavaScript, SVG.
 	NetworkBodiesText NetworkBodies = "text"
-	// NetworkBodiesAll keeps every body regardless of type. Binary payloads
-	// (images, fonts, video) do not cross the browser boundary intact, so
-	// prefer NetworkBodiesText unless you know the bodies are textual.
+	// NetworkBodiesAll keeps every body regardless of type, binary included.
 	NetworkBodiesAll NetworkBodies = "all"
 )
 
 // NetworkCaptureOptions configures [CloudBrowser.CaptureNetwork].
 //
-// There is deliberately no byte-cap option: buffer sizes bound memory on a
-// machine shared with other sessions, so the server owns them.
+// There is deliberately no byte-cap option: kept bodies are stored on a machine
+// shared with other sessions, so the server owns the quota. When a session's
+// bodies exceed it, the oldest are dropped first.
 type NetworkCaptureOptions struct {
 	// Patterns are URL wildcards to capture; nil captures every request the
 	// session makes. Prefix a pattern with "!" to exclude it, which is the
@@ -336,6 +337,7 @@ type NetworkCaptureOptions struct {
 	Patterns []string
 
 	// Bodies selects response-body capture. Empty means NetworkBodiesNone.
+	// Request bodies are kept whenever a request has one.
 	Bodies NetworkBodies
 
 	// BodyPatterns narrows body capture to a subset of the captured requests;
@@ -526,6 +528,117 @@ func (c *CloudBrowser) StreamNetworkExchanges(ctx context.Context, onExchange Ne
 	return nc, nil
 }
 
+// NetworkBodyRange is one range of a captured body, as returned by
+// [CloudBrowser.ReadNetworkBodyRange].
+type NetworkBodyRange struct {
+	// Data holds the bytes read; empty past the end of the body.
+	Data []byte
+	// TotalSize is the number of bytes kept for the body as a whole.
+	TotalSize int64
+	// Truncated matches the exchange's truncated flag for this body.
+	Truncated bool
+}
+
+// ReadNetworkBody reads a whole captured body: an exchange's RequestBodyId or
+// ResponseBodyId.
+//
+// Bodies are stored by the browser, not sent with the exchange, so reading one
+// is a separate call. They stay readable after the capture stops, until the
+// session ends.
+//
+// The body is fetched in ranges and assembled in memory. For very large bodies,
+// use [CloudBrowser.ReadNetworkBodyRange] to process them piece by piece.
+//
+// @param bodyId - RequestBodyId or ResponseBodyId from a [NetworkExchange]
+//
+// @returns []byte holding the body, bool reporting whether the kept body is
+//
+//	shorter than the original, and an error
+//
+// @throws not_found - no body with this id was kept in this session
+// @throws evicted - the body was dropped to stay within the session's storage
+// quota; read bodies sooner, or narrow BodyPatterns
+// @throws unavailable - the body could not be stored or read back
+//
+// @see [CommandError] for recovering the code with errors.As
+//
+// @example
+//
+//	capture, _ := browser.CaptureNetwork(ctx, browserscale.NetworkCaptureOptions{
+//	    Patterns: []string{"*/api/*"},
+//	    Bodies:   browserscale.NetworkBodiesText,
+//	}, func(ex browserscale.NetworkExchange) {
+//	    if ex.ResponseBodyId == "" {
+//	        return
+//	    }
+//	    go func() {
+//	        body, _, err := browser.ReadNetworkBody(ctx, ex.ResponseBodyId)
+//	        if err == nil {
+//	            fmt.Println(ex.Url, len(body))
+//	        }
+//	    }()
+//	})
+//	defer capture.Stop(ctx)
+func (c *CloudBrowser) ReadNetworkBody(ctx context.Context, bodyId string) ([]byte, bool, error) {
+	var out []byte
+	for {
+		r, err := c.ReadNetworkBodyRange(ctx, bodyId, int64(len(out)), 0)
+		if err != nil {
+			return nil, false, err
+		}
+		if out == nil {
+			out = make([]byte, 0, r.TotalSize)
+		}
+		out = append(out, r.Data...)
+		if len(r.Data) == 0 || int64(len(out)) >= r.TotalSize {
+			return out, r.Truncated, nil
+		}
+	}
+}
+
+// ReadNetworkBodyRange reads up to length bytes of a captured body starting at
+// offset.
+//
+// A single call returns at most 2 MiB; length 0 reads that much. Loop on
+// offset + len(Data) until it reaches TotalSize to stream a large body.
+//
+// @param bodyId - RequestBodyId or ResponseBodyId from a [NetworkExchange]
+// @param offset - first byte to read
+// @param length - bytes to read; 0 reads the per-call maximum
+//
+// @returns *NetworkBodyRange with the bytes and the body's total size, and an
+//
+//	error
+//
+// @inheritDoc [CloudBrowser.ReadNetworkBody]
+func (c *CloudBrowser) ReadNetworkBodyRange(ctx context.Context, bodyId string, offset, length int64) (*NetworkBodyRange, error) {
+	if bodyId == "" {
+		return nil, errors.New("browserscale.ReadNetworkBody: bodyId must not be empty")
+	}
+	req := &generated.GetNetworkBodyRequest{
+		SessionId: c.sessionId, ApiKey: c.apiKey,
+		BodyId: bodyId,
+	}
+	if offset > 0 {
+		req.Offset = &offset
+	}
+	if length > 0 {
+		req.Length = &length
+	}
+	resp, err := c.client.GetNetworkBody(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if e := commandErrorFrom("getNetworkBody", resp.GetError()); e != nil {
+		return nil, e
+	}
+	return &NetworkBodyRange{
+		Data:      resp.Data,
+		TotalSize: resp.TotalSize,
+		Truncated: resp.Truncated,
+	}, nil
+}
+
 // Wait blocks until the capture ends — [NetworkCapture.Stop], a cancelled
 // context, a dead session or a transport failure — and returns
 // [NetworkCapture.Err].
@@ -548,7 +661,7 @@ func (nc *NetworkCapture) Err() error {
 
 // Dropped reports how many exchanges the server discarded because this reader
 // fell behind. Anything above zero means the log has holes: make the handler
-// cheaper, narrow Patterns, or stop capturing bodies.
+// cheaper or narrow Patterns.
 func (nc *NetworkCapture) Dropped() uint64 {
 	nc.mu.Lock()
 	defer nc.mu.Unlock()

@@ -43,6 +43,7 @@ const (
 	Browser_StartNetworkCapture_FullMethodName    = "/browserscale.v1.Browser/StartNetworkCapture"
 	Browser_StopNetworkCapture_FullMethodName     = "/browserscale.v1.Browser/StopNetworkCapture"
 	Browser_StreamNetworkExchanges_FullMethodName = "/browserscale.v1.Browser/StreamNetworkExchanges"
+	Browser_GetNetworkBody_FullMethodName         = "/browserscale.v1.Browser/GetNetworkBody"
 	Browser_GetCookies_FullMethodName             = "/browserscale.v1.Browser/GetCookies"
 	Browser_SetCookies_FullMethodName             = "/browserscale.v1.Browser/SetCookies"
 	Browser_ClearCookies_FullMethodName           = "/browserscale.v1.Browser/ClearCookies"
@@ -120,10 +121,12 @@ type BrowserClient interface {
 	// Network capture — every matching request in the session, reported as it
 	// completes. Start/Stop are session state; the stream is a separate
 	// subscription, so a capture survives a reader reconnect and two readers
-	// can watch one capture.
+	// can watch one capture. Exchanges only name their bodies; GetNetworkBody
+	// reads them.
 	StartNetworkCapture(ctx context.Context, in *StartNetworkCaptureRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	StopNetworkCapture(ctx context.Context, in *StopNetworkCaptureRequest, opts ...grpc.CallOption) (*StopNetworkCaptureResponse, error)
 	StreamNetworkExchanges(ctx context.Context, in *StreamNetworkExchangesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NetworkExchangeEvent], error)
+	GetNetworkBody(ctx context.Context, in *GetNetworkBodyRequest, opts ...grpc.CallOption) (*GetNetworkBodyResponse, error)
 	// Cookies
 	GetCookies(ctx context.Context, in *GetCookiesRequest, opts ...grpc.CallOption) (*GetCookiesResponse, error)
 	SetCookies(ctx context.Context, in *SetCookiesRequest, opts ...grpc.CallOption) (*CommandResult, error)
@@ -462,6 +465,16 @@ func (c *browserClient) StreamNetworkExchanges(ctx context.Context, in *StreamNe
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Browser_StreamNetworkExchangesClient = grpc.ServerStreamingClient[NetworkExchangeEvent]
+
+func (c *browserClient) GetNetworkBody(ctx context.Context, in *GetNetworkBodyRequest, opts ...grpc.CallOption) (*GetNetworkBodyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNetworkBodyResponse)
+	err := c.cc.Invoke(ctx, Browser_GetNetworkBody_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
 
 func (c *browserClient) GetCookies(ctx context.Context, in *GetCookiesRequest, opts ...grpc.CallOption) (*GetCookiesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -880,10 +893,12 @@ type BrowserServer interface {
 	// Network capture — every matching request in the session, reported as it
 	// completes. Start/Stop are session state; the stream is a separate
 	// subscription, so a capture survives a reader reconnect and two readers
-	// can watch one capture.
+	// can watch one capture. Exchanges only name their bodies; GetNetworkBody
+	// reads them.
 	StartNetworkCapture(context.Context, *StartNetworkCaptureRequest) (*CommandResult, error)
 	StopNetworkCapture(context.Context, *StopNetworkCaptureRequest) (*StopNetworkCaptureResponse, error)
 	StreamNetworkExchanges(*StreamNetworkExchangesRequest, grpc.ServerStreamingServer[NetworkExchangeEvent]) error
+	GetNetworkBody(context.Context, *GetNetworkBodyRequest) (*GetNetworkBodyResponse, error)
 	// Cookies
 	GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error)
 	SetCookies(context.Context, *SetCookiesRequest) (*CommandResult, error)
@@ -1045,6 +1060,9 @@ func (UnimplementedBrowserServer) StopNetworkCapture(context.Context, *StopNetwo
 }
 func (UnimplementedBrowserServer) StreamNetworkExchanges(*StreamNetworkExchangesRequest, grpc.ServerStreamingServer[NetworkExchangeEvent]) error {
 	return status.Errorf(codes.Unimplemented, "method StreamNetworkExchanges not implemented")
+}
+func (UnimplementedBrowserServer) GetNetworkBody(context.Context, *GetNetworkBodyRequest) (*GetNetworkBodyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNetworkBody not implemented")
 }
 func (UnimplementedBrowserServer) GetCookies(context.Context, *GetCookiesRequest) (*GetCookiesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetCookies not implemented")
@@ -1599,6 +1617,24 @@ func _Browser_StreamNetworkExchanges_Handler(srv interface{}, stream grpc.Server
 
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type Browser_StreamNetworkExchangesServer = grpc.ServerStreamingServer[NetworkExchangeEvent]
+
+func _Browser_GetNetworkBody_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNetworkBodyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetNetworkBody(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetNetworkBody_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetNetworkBody(ctx, req.(*GetNetworkBodyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
 
 func _Browser_GetCookies_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetCookiesRequest)
@@ -2332,6 +2368,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StopNetworkCapture",
 			Handler:    _Browser_StopNetworkCapture_Handler,
+		},
+		{
+			MethodName: "GetNetworkBody",
+			Handler:    _Browser_GetNetworkBody_Handler,
 		},
 		{
 			MethodName: "GetCookies",

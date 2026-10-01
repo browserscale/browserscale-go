@@ -160,9 +160,15 @@ type NetworkExchange struct {
 	// actually sent — Cookie, User-Agent and Sec-* included — rather than what
 	// the page asked for before the network stack filled in the rest.
 	RequestHeadersAreWire bool
-	// RequestBody holds an inline body only. File and streamed uploads set
-	// RequestBodyTruncated instead of appearing here.
-	RequestBody          []byte
+	// RequestBodyId names the request body; read it with
+	// [CloudBrowser.ReadNetworkBody]. Empty when the request had no body.
+	// Bodies never travel with the exchange.
+	RequestBodyId string
+	// RequestBodySize is the number of bytes kept for the request body.
+	RequestBodySize int64
+	// RequestBodyTruncated reports that part of the request body is missing:
+	// it hit the per-body cap, or it was a file or streamed upload, which are
+	// not kept.
 	RequestBodyTruncated bool
 
 	// HasResponse is false when the request failed before any response
@@ -177,13 +183,16 @@ type NetworkExchange struct {
 	ServedFrom             NetworkServedFrom
 	ResponseHeaders        []Header
 	ResponseHeadersAreWire bool
-	// ResponseBody is populated only when body capture was requested for this
-	// URL and applied; check ResponseBodyCaptured to tell an empty body from an
-	// uncaptured one. Binary content does not survive the browser boundary
-	// intact — see NetworkBodiesAll.
-	ResponseBody          []byte
+	// ResponseBodyId names the response body; read it with
+	// [CloudBrowser.ReadNetworkBody]. Empty when body capture did not apply to
+	// this exchange — see [NetworkCaptureOptions].Bodies.
+	ResponseBodyId string
+	// ResponseBodySize is the number of bytes kept for the response body,
+	// after content decoding.
+	ResponseBodySize int64
+	// ResponseBodyTruncated reports that the kept body is shorter than the one
+	// the page received: it hit the per-body cap or the load ended early.
 	ResponseBodyTruncated bool
-	ResponseBodyCaptured  bool
 
 	EncodedDataLength int64
 

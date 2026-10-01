@@ -128,7 +128,8 @@ func networkExchangeFromProto(e *generated.NetworkExchange) NetworkExchange {
 		InitiatorUrl:          e.InitiatorUrl,
 		RequestHeaders:        headersFromProto(e.RequestHeaders),
 		RequestHeadersAreWire: e.RequestHeadersAreWire,
-		RequestBody:           e.RequestBody,
+		RequestBodyId:         e.RequestBodyId,
+		RequestBodySize:       e.RequestBodySize,
 		RequestBodyTruncated:  e.RequestBodyTruncated,
 
 		HasResponse:            e.HasResponse,
@@ -140,9 +141,9 @@ func networkExchangeFromProto(e *generated.NetworkExchange) NetworkExchange {
 		ServedFrom:             NetworkServedFrom(e.ServedFrom),
 		ResponseHeaders:        headersFromProto(e.ResponseHeaders),
 		ResponseHeadersAreWire: e.ResponseHeadersAreWire,
-		ResponseBody:           e.ResponseBody,
+		ResponseBodyId:         e.ResponseBodyId,
+		ResponseBodySize:       e.ResponseBodySize,
 		ResponseBodyTruncated:  e.ResponseBodyTruncated,
-		ResponseBodyCaptured:   e.ResponseBodyCaptured,
 
 		EncodedDataLength: e.EncodedDataLength,
 
