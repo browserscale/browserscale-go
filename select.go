@@ -24,7 +24,7 @@ type SelectOpts struct {
 //
 // Sets the option as selected on the targeted <select>, then fires the
 // standard input + change events (unless suppressed via
-// [CloudBrowser.SelectByIndexWith] with [SelectOpts].NoEvents).
+// [Page.SelectByIndexWith] with [SelectOpts].NoEvents).
 //
 // [At] is not a valid target — Select requires an actual <select>
 // element.
@@ -47,112 +47,113 @@ type SelectOpts struct {
 //
 // @see [SelectOptionError] for recovering the code with errors.As
 //
-// @see [CloudBrowser.SelectByIndexWith] for suppressing events or
+// @see [Page.SelectByIndexWith] for suppressing events or
 //
 //	overriding the target frame
 //
-// @see [CloudBrowser.SelectByValue], [CloudBrowser.SelectByText]
+// @see [Page.SelectByValue], [Page.SelectByText]
 //
 //	for matching by `value` attribute or visible text instead
 //
 // @example
 //
-//	_, err := browser.SelectByIndex(ctx, browserscale.CSS("select#country"), 2)
-func (c *CloudBrowser) SelectByIndex(ctx context.Context, target *Locator, index int32) (*SelectOptionResult, error) {
-	return c.selectByIndexWith(ctx, target, index, SelectOpts{})
+//	_, err := page.SelectByIndex(ctx, browserscale.CSS("select#country"), 2)
+func (p *Page) SelectByIndex(ctx context.Context, target *Locator, index int32) (*SelectOptionResult, error) {
+	return p.selectByIndexWith(ctx, target, index, SelectOpts{})
 }
 
-// SelectByIndexWith is the customizable variant of [CloudBrowser.SelectByIndex].
+// SelectByIndexWith is the customizable variant of [Page.SelectByIndex].
 //
-// @inheritDoc [CloudBrowser.SelectByIndex]
+// @inheritDoc [Page.SelectByIndex]
 // @param opts - select customization; see [SelectOpts]
 //
 // @example
 //
 //	// Pick the option silently, no input/change events.
-//	_, err := browser.SelectByIndexWith(ctx, browserscale.CSS("select#hidden"), 0, browserscale.SelectOpts{
+//	_, err := page.SelectByIndexWith(ctx, browserscale.CSS("select#hidden"), 0, browserscale.SelectOpts{
 //	    NoEvents: true,
 //	})
-func (c *CloudBrowser) SelectByIndexWith(ctx context.Context, target *Locator, index int32, opts SelectOpts) (*SelectOptionResult, error) {
-	return c.selectByIndexWith(ctx, target, index, opts)
+func (p *Page) SelectByIndexWith(ctx context.Context, target *Locator, index int32, opts SelectOpts) (*SelectOptionResult, error) {
+	return p.selectByIndexWith(ctx, target, index, opts)
 }
 
-func (c *CloudBrowser) selectByIndexWith(ctx context.Context, target *Locator, index int32, o SelectOpts) (*SelectOptionResult, error) {
+func (p *Page) selectByIndexWith(ctx context.Context, target *Locator, index int32, o SelectOpts) (*SelectOptionResult, error) {
 	i := index
-	return c.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Index = &i })
+	return p.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Index = &i })
 }
 
 // SelectByValue picks the <option> whose `value` attribute matches the
 // given string exactly.
 //
-// @inheritDoc [CloudBrowser.SelectByIndex]
+// @inheritDoc [Page.SelectByIndex]
 // @param value - the `value` attribute to match
 //
 // @example
 //
-//	_, err := browser.SelectByValue(ctx, browserscale.CSS("select#country"), "DE")
-func (c *CloudBrowser) SelectByValue(ctx context.Context, target *Locator, value string) (*SelectOptionResult, error) {
-	return c.selectByValueWith(ctx, target, value, SelectOpts{})
+//	_, err := page.SelectByValue(ctx, browserscale.CSS("select#country"), "DE")
+func (p *Page) SelectByValue(ctx context.Context, target *Locator, value string) (*SelectOptionResult, error) {
+	return p.selectByValueWith(ctx, target, value, SelectOpts{})
 }
 
-// SelectByValueWith is the customizable variant of [CloudBrowser.SelectByValue].
+// SelectByValueWith is the customizable variant of [Page.SelectByValue].
 //
-// @inheritDoc [CloudBrowser.SelectByValue]
+// @inheritDoc [Page.SelectByValue]
 // @param opts - select customization; see [SelectOpts]
 //
 // @example
 //
-//	_, err := browser.SelectByValueWith(ctx, browserscale.CSS("select#country"), "DE", browserscale.SelectOpts{
+//	_, err := page.SelectByValueWith(ctx, browserscale.CSS("select#country"), "DE", browserscale.SelectOpts{
 //	    NoEvents: true,
 //	})
-func (c *CloudBrowser) SelectByValueWith(ctx context.Context, target *Locator, value string, opts SelectOpts) (*SelectOptionResult, error) {
-	return c.selectByValueWith(ctx, target, value, opts)
+func (p *Page) SelectByValueWith(ctx context.Context, target *Locator, value string, opts SelectOpts) (*SelectOptionResult, error) {
+	return p.selectByValueWith(ctx, target, value, opts)
 }
 
-func (c *CloudBrowser) selectByValueWith(ctx context.Context, target *Locator, value string, o SelectOpts) (*SelectOptionResult, error) {
+func (p *Page) selectByValueWith(ctx context.Context, target *Locator, value string, o SelectOpts) (*SelectOptionResult, error) {
 	v := value
-	return c.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Value = &v })
+	return p.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Value = &v })
 }
 
 // SelectByText picks the <option> whose visible (trimmed) text matches
 // the given string exactly.
 //
-// @inheritDoc [CloudBrowser.SelectByIndex]
+// @inheritDoc [Page.SelectByIndex]
 // @param text - the visible option text to match
 //
 // @example
 //
-//	_, err := browser.SelectByText(ctx, browserscale.CSS("select#country"), "Germany")
-func (c *CloudBrowser) SelectByText(ctx context.Context, target *Locator, text string) (*SelectOptionResult, error) {
-	return c.selectByTextWith(ctx, target, text, SelectOpts{})
+//	_, err := page.SelectByText(ctx, browserscale.CSS("select#country"), "Germany")
+func (p *Page) SelectByText(ctx context.Context, target *Locator, text string) (*SelectOptionResult, error) {
+	return p.selectByTextWith(ctx, target, text, SelectOpts{})
 }
 
-// SelectByTextWith is the customizable variant of [CloudBrowser.SelectByText].
+// SelectByTextWith is the customizable variant of [Page.SelectByText].
 //
-// @inheritDoc [CloudBrowser.SelectByText]
+// @inheritDoc [Page.SelectByText]
 // @param opts - select customization; see [SelectOpts]
 //
 // @example
 //
-//	_, err := browser.SelectByTextWith(ctx, browserscale.CSS("select#country"), "Germany", browserscale.SelectOpts{
+//	_, err := page.SelectByTextWith(ctx, browserscale.CSS("select#country"), "Germany", browserscale.SelectOpts{
 //	    NoEvents: true,
 //	})
-func (c *CloudBrowser) SelectByTextWith(ctx context.Context, target *Locator, text string, opts SelectOpts) (*SelectOptionResult, error) {
-	return c.selectByTextWith(ctx, target, text, opts)
+func (p *Page) SelectByTextWith(ctx context.Context, target *Locator, text string, opts SelectOpts) (*SelectOptionResult, error) {
+	return p.selectByTextWith(ctx, target, text, opts)
 }
 
-func (c *CloudBrowser) selectByTextWith(ctx context.Context, target *Locator, text string, o SelectOpts) (*SelectOptionResult, error) {
+func (p *Page) selectByTextWith(ctx context.Context, target *Locator, text string, o SelectOpts) (*SelectOptionResult, error) {
 	t := text
-	return c.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Text = &t })
+	return p.runSelect(ctx, target, o, func(req *generated.SelectOptionRequest) { req.Text = &t })
 }
 
-func (c *CloudBrowser) runSelect(ctx context.Context, target *Locator, o SelectOpts, withKey func(*generated.SelectOptionRequest)) (*SelectOptionResult, error) {
+func (p *Page) runSelect(ctx context.Context, target *Locator, o SelectOpts, withKey func(*generated.SelectOptionRequest)) (*SelectOptionResult, error) {
 	if err := target.validateTarget("SelectOption", false); err != nil {
 		return nil, err
 	}
 	req := &generated.SelectOptionRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -163,7 +164,7 @@ func (c *CloudBrowser) runSelect(ctx context.Context, target *Locator, o SelectO
 		f := false
 		req.FireEvents = &f
 	}
-	resp, err := c.client.SelectOption(ctx, req)
+	resp, err := p.client.SelectOption(ctx, req)
 	if err != nil {
 		return nil, err
 	}

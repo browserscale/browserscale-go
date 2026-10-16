@@ -19,67 +19,74 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Browser_SetProxy_FullMethodName               = "/browserscale.v1.Browser/SetProxy"
-	Browser_GetPages_FullMethodName               = "/browserscale.v1.Browser/GetPages"
-	Browser_GetUsage_FullMethodName               = "/browserscale.v1.Browser/GetUsage"
-	Browser_Navigate_FullMethodName               = "/browserscale.v1.Browser/Navigate"
-	Browser_LoadHTML_FullMethodName               = "/browserscale.v1.Browser/LoadHTML"
-	Browser_Evaluate_FullMethodName               = "/browserscale.v1.Browser/Evaluate"
-	Browser_WaitForAny_FullMethodName             = "/browserscale.v1.Browser/WaitForAny"
-	Browser_SelectOption_FullMethodName           = "/browserscale.v1.Browser/SelectOption"
-	Browser_ScrollTo_FullMethodName               = "/browserscale.v1.Browser/ScrollTo"
-	Browser_MoveTo_FullMethodName                 = "/browserscale.v1.Browser/MoveTo"
-	Browser_Click_FullMethodName                  = "/browserscale.v1.Browser/Click"
-	Browser_Drag_FullMethodName                   = "/browserscale.v1.Browser/Drag"
-	Browser_Fill_FullMethodName                   = "/browserscale.v1.Browser/Fill"
-	Browser_AddReaction_FullMethodName            = "/browserscale.v1.Browser/AddReaction"
-	Browser_RemoveReaction_FullMethodName         = "/browserscale.v1.Browser/RemoveReaction"
-	Browser_ListReactions_FullMethodName          = "/browserscale.v1.Browser/ListReactions"
-	Browser_SetBlockList_FullMethodName           = "/browserscale.v1.Browser/SetBlockList"
-	Browser_SetStaticPaths_FullMethodName         = "/browserscale.v1.Browser/SetStaticPaths"
-	Browser_WaitForAnyRequest_FullMethodName      = "/browserscale.v1.Browser/WaitForAnyRequest"
-	Browser_WaitForAnyResponse_FullMethodName     = "/browserscale.v1.Browser/WaitForAnyResponse"
-	Browser_ModifyRequest_FullMethodName          = "/browserscale.v1.Browser/ModifyRequest"
-	Browser_StartNetworkCapture_FullMethodName    = "/browserscale.v1.Browser/StartNetworkCapture"
-	Browser_StopNetworkCapture_FullMethodName     = "/browserscale.v1.Browser/StopNetworkCapture"
-	Browser_StreamNetworkExchanges_FullMethodName = "/browserscale.v1.Browser/StreamNetworkExchanges"
-	Browser_GetNetworkBody_FullMethodName         = "/browserscale.v1.Browser/GetNetworkBody"
-	Browser_GetCookies_FullMethodName             = "/browserscale.v1.Browser/GetCookies"
-	Browser_SetCookies_FullMethodName             = "/browserscale.v1.Browser/SetCookies"
-	Browser_ClearCookies_FullMethodName           = "/browserscale.v1.Browser/ClearCookies"
-	Browser_GetStorage_FullMethodName             = "/browserscale.v1.Browser/GetStorage"
-	Browser_SetStorage_FullMethodName             = "/browserscale.v1.Browser/SetStorage"
-	Browser_ClearStorage_FullMethodName           = "/browserscale.v1.Browser/ClearStorage"
-	Browser_GetAuthSession_FullMethodName         = "/browserscale.v1.Browser/GetAuthSession"
-	Browser_SetAuthSession_FullMethodName         = "/browserscale.v1.Browser/SetAuthSession"
-	Browser_GetDOM_FullMethodName                 = "/browserscale.v1.Browser/GetDOM"
-	Browser_GetDOMHash_FullMethodName             = "/browserscale.v1.Browser/GetDOMHash"
-	Browser_GetObservation_FullMethodName         = "/browserscale.v1.Browser/GetObservation"
-	Browser_InspectAtPosition_FullMethodName      = "/browserscale.v1.Browser/InspectAtPosition"
-	Browser_HighlightNode_FullMethodName          = "/browserscale.v1.Browser/HighlightNode"
-	Browser_StartDomMirror_FullMethodName         = "/browserscale.v1.Browser/StartDomMirror"
-	Browser_StopDomMirror_FullMethodName          = "/browserscale.v1.Browser/StopDomMirror"
-	Browser_GetDomChildren_FullMethodName         = "/browserscale.v1.Browser/GetDomChildren"
-	Browser_ReleaseDomSubtree_FullMethodName      = "/browserscale.v1.Browser/ReleaseDomSubtree"
-	Browser_RevealDomNode_FullMethodName          = "/browserscale.v1.Browser/RevealDomNode"
-	Browser_GetDomRevision_FullMethodName         = "/browserscale.v1.Browser/GetDomRevision"
-	Browser_StreamDomEvents_FullMethodName        = "/browserscale.v1.Browser/StreamDomEvents"
-	Browser_Screenshot_FullMethodName             = "/browserscale.v1.Browser/Screenshot"
-	Browser_ReadCanvas_FullMethodName             = "/browserscale.v1.Browser/ReadCanvas"
-	Browser_InsertText_FullMethodName             = "/browserscale.v1.Browser/InsertText"
-	Browser_Type_FullMethodName                   = "/browserscale.v1.Browser/Type"
-	Browser_PressKey_FullMethodName               = "/browserscale.v1.Browser/PressKey"
-	Browser_ReleaseKey_FullMethodName             = "/browserscale.v1.Browser/ReleaseKey"
-	Browser_GetSelection_FullMethodName           = "/browserscale.v1.Browser/GetSelection"
-	Browser_SolveCaptcha_FullMethodName           = "/browserscale.v1.Browser/SolveCaptcha"
-	Browser_GetStreamConfig_FullMethodName        = "/browserscale.v1.Browser/GetStreamConfig"
-	Browser_StartStream_FullMethodName            = "/browserscale.v1.Browser/StartStream"
-	Browser_StopStream_FullMethodName             = "/browserscale.v1.Browser/StopStream"
-	Browser_RunScript_FullMethodName              = "/browserscale.v1.Browser/RunScript"
-	Browser_StartScript_FullMethodName            = "/browserscale.v1.Browser/StartScript"
-	Browser_StopScripts_FullMethodName            = "/browserscale.v1.Browser/StopScripts"
-	Browser_ListScriptRuns_FullMethodName         = "/browserscale.v1.Browser/ListScriptRuns"
-	Browser_StreamScriptEvents_FullMethodName     = "/browserscale.v1.Browser/StreamScriptEvents"
+	Browser_SetProxy_FullMethodName                = "/browserscale.v1.Browser/SetProxy"
+	Browser_GetPages_FullMethodName                = "/browserscale.v1.Browser/GetPages"
+	Browser_CreatePage_FullMethodName              = "/browserscale.v1.Browser/CreatePage"
+	Browser_GetFocusedPage_FullMethodName          = "/browserscale.v1.Browser/GetFocusedPage"
+	Browser_FocusPage_FullMethodName               = "/browserscale.v1.Browser/FocusPage"
+	Browser_ClosePage_FullMethodName               = "/browserscale.v1.Browser/ClosePage"
+	Browser_StreamContextEvents_FullMethodName     = "/browserscale.v1.Browser/StreamContextEvents"
+	Browser_GetUsage_FullMethodName                = "/browserscale.v1.Browser/GetUsage"
+	Browser_Navigate_FullMethodName                = "/browserscale.v1.Browser/Navigate"
+	Browser_LoadHTML_FullMethodName                = "/browserscale.v1.Browser/LoadHTML"
+	Browser_Evaluate_FullMethodName                = "/browserscale.v1.Browser/Evaluate"
+	Browser_WaitForAny_FullMethodName              = "/browserscale.v1.Browser/WaitForAny"
+	Browser_SelectOption_FullMethodName            = "/browserscale.v1.Browser/SelectOption"
+	Browser_ScrollTo_FullMethodName                = "/browserscale.v1.Browser/ScrollTo"
+	Browser_MoveTo_FullMethodName                  = "/browserscale.v1.Browser/MoveTo"
+	Browser_Click_FullMethodName                   = "/browserscale.v1.Browser/Click"
+	Browser_Drag_FullMethodName                    = "/browserscale.v1.Browser/Drag"
+	Browser_Fill_FullMethodName                    = "/browserscale.v1.Browser/Fill"
+	Browser_AddReaction_FullMethodName             = "/browserscale.v1.Browser/AddReaction"
+	Browser_RemoveReaction_FullMethodName          = "/browserscale.v1.Browser/RemoveReaction"
+	Browser_ListReactions_FullMethodName           = "/browserscale.v1.Browser/ListReactions"
+	Browser_SetBlockList_FullMethodName            = "/browserscale.v1.Browser/SetBlockList"
+	Browser_SetStaticPaths_FullMethodName          = "/browserscale.v1.Browser/SetStaticPaths"
+	Browser_WaitForAnyRequest_FullMethodName       = "/browserscale.v1.Browser/WaitForAnyRequest"
+	Browser_WaitForAnyResponse_FullMethodName      = "/browserscale.v1.Browser/WaitForAnyResponse"
+	Browser_ModifyRequest_FullMethodName           = "/browserscale.v1.Browser/ModifyRequest"
+	Browser_StartNetworkCapture_FullMethodName     = "/browserscale.v1.Browser/StartNetworkCapture"
+	Browser_StopNetworkCapture_FullMethodName      = "/browserscale.v1.Browser/StopNetworkCapture"
+	Browser_StreamNetworkExchanges_FullMethodName  = "/browserscale.v1.Browser/StreamNetworkExchanges"
+	Browser_GetNetworkBody_FullMethodName          = "/browserscale.v1.Browser/GetNetworkBody"
+	Browser_GetCookies_FullMethodName              = "/browserscale.v1.Browser/GetCookies"
+	Browser_SetCookies_FullMethodName              = "/browserscale.v1.Browser/SetCookies"
+	Browser_ClearCookies_FullMethodName            = "/browserscale.v1.Browser/ClearCookies"
+	Browser_GetStorage_FullMethodName              = "/browserscale.v1.Browser/GetStorage"
+	Browser_SetStorage_FullMethodName              = "/browserscale.v1.Browser/SetStorage"
+	Browser_ClearStorage_FullMethodName            = "/browserscale.v1.Browser/ClearStorage"
+	Browser_GetAuthSession_FullMethodName          = "/browserscale.v1.Browser/GetAuthSession"
+	Browser_SetAuthSession_FullMethodName          = "/browserscale.v1.Browser/SetAuthSession"
+	Browser_GetDOM_FullMethodName                  = "/browserscale.v1.Browser/GetDOM"
+	Browser_GetDOMHash_FullMethodName              = "/browserscale.v1.Browser/GetDOMHash"
+	Browser_GetObservation_FullMethodName          = "/browserscale.v1.Browser/GetObservation"
+	Browser_InspectAtPosition_FullMethodName       = "/browserscale.v1.Browser/InspectAtPosition"
+	Browser_HighlightNode_FullMethodName           = "/browserscale.v1.Browser/HighlightNode"
+	Browser_StartDomMirror_FullMethodName          = "/browserscale.v1.Browser/StartDomMirror"
+	Browser_StopDomMirror_FullMethodName           = "/browserscale.v1.Browser/StopDomMirror"
+	Browser_GetDomChildren_FullMethodName          = "/browserscale.v1.Browser/GetDomChildren"
+	Browser_ReleaseDomSubtree_FullMethodName       = "/browserscale.v1.Browser/ReleaseDomSubtree"
+	Browser_RevealDomNode_FullMethodName           = "/browserscale.v1.Browser/RevealDomNode"
+	Browser_GetDomRevision_FullMethodName          = "/browserscale.v1.Browser/GetDomRevision"
+	Browser_StreamDomEvents_FullMethodName         = "/browserscale.v1.Browser/StreamDomEvents"
+	Browser_Screenshot_FullMethodName              = "/browserscale.v1.Browser/Screenshot"
+	Browser_ReadCanvas_FullMethodName              = "/browserscale.v1.Browser/ReadCanvas"
+	Browser_InsertText_FullMethodName              = "/browserscale.v1.Browser/InsertText"
+	Browser_Type_FullMethodName                    = "/browserscale.v1.Browser/Type"
+	Browser_PressKey_FullMethodName                = "/browserscale.v1.Browser/PressKey"
+	Browser_ReleaseKey_FullMethodName              = "/browserscale.v1.Browser/ReleaseKey"
+	Browser_GetSelection_FullMethodName            = "/browserscale.v1.Browser/GetSelection"
+	Browser_SolveCaptcha_FullMethodName            = "/browserscale.v1.Browser/SolveCaptcha"
+	Browser_EnableCaptchaAutoSolve_FullMethodName  = "/browserscale.v1.Browser/EnableCaptchaAutoSolve"
+	Browser_DisableCaptchaAutoSolve_FullMethodName = "/browserscale.v1.Browser/DisableCaptchaAutoSolve"
+	Browser_GetStreamConfig_FullMethodName         = "/browserscale.v1.Browser/GetStreamConfig"
+	Browser_StartStream_FullMethodName             = "/browserscale.v1.Browser/StartStream"
+	Browser_StopStream_FullMethodName              = "/browserscale.v1.Browser/StopStream"
+	Browser_RunScript_FullMethodName               = "/browserscale.v1.Browser/RunScript"
+	Browser_StartScript_FullMethodName             = "/browserscale.v1.Browser/StartScript"
+	Browser_StopScripts_FullMethodName             = "/browserscale.v1.Browser/StopScripts"
+	Browser_ListScriptRuns_FullMethodName          = "/browserscale.v1.Browser/ListScriptRuns"
+	Browser_StreamScriptEvents_FullMethodName      = "/browserscale.v1.Browser/StreamScriptEvents"
 )
 
 // BrowserClient is the client API for Browser service.
@@ -89,6 +96,24 @@ type BrowserClient interface {
 	// Context-level
 	SetProxy(ctx context.Context, in *SetProxyRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	GetPages(ctx context.Context, in *GetPagesRequest, opts ...grpc.CallOption) (*GetPagesResponse, error)
+	// Opens a page the way opening a new tab does: an about:blank tab that
+	// takes the focus. A session starts without a page, so this is the first
+	// call after rent; it answers once the page is ready for Navigate.
+	CreatePage(ctx context.Context, in *CreatePageRequest, opts ...grpc.CallOption) (*CreatePageResponse, error)
+	// The page of the context that has the focus. Once the context has a page
+	// it always has one; before the first CreatePage this fails with NO_PAGE.
+	GetFocusedPage(ctx context.Context, in *GetFocusedPageRequest, opts ...grpc.CallOption) (*GetFocusedPageResponse, error)
+	// Brings a page to the front, the way clicking its tab does.
+	FocusPage(ctx context.Context, in *FocusPageRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	// Closes a page the way closing its tab does, and reports which page has
+	// the focus afterwards.
+	ClosePage(ctx context.Context, in *ClosePageRequest, opts ...grpc.CallOption) (*ClosePageResponse, error)
+	// The context's pages as they change: first a snapshot of every page, then
+	// each page opening, closing, taking the focus or changing its address or
+	// title, until the client goes away or the session ends. A snapshot can
+	// come again later; it then replaces everything the client holds. Applying
+	// the events in order to the last snapshot gives the current pages.
+	StreamContextEvents(ctx context.Context, in *StreamContextEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ContextEvent], error)
 	// What the session has consumed so far. The final figures need no call of
 	// their own: the stop endpoint returns them.
 	GetUsage(ctx context.Context, in *GetUsageRequest, opts ...grpc.CallOption) (*GetUsageResponse, error)
@@ -107,8 +132,10 @@ type BrowserClient interface {
 	Drag(ctx context.Context, in *DragRequest, opts ...grpc.CallOption) (*DragResult, error)
 	Fill(ctx context.Context, in *FillRequest, opts ...grpc.CallOption) (*FillResult, error)
 	// Reactions — one-shot background auto-click when a condition matches. A
-	// shared per-page poller fires only while the pointer is idle, so a reaction
-	// slots into the gaps of a retrying foreground action.
+	// reaction that fires pauses the running input action at a safe point,
+	// clicks, and lets the action carry on. A reaction belongs to one page or
+	// to every page of the session; each click is reported as reaction_fired on
+	// StreamContextEvents.
 	AddReaction(ctx context.Context, in *AddReactionRequest, opts ...grpc.CallOption) (*AddReactionResponse, error)
 	RemoveReaction(ctx context.Context, in *RemoveReactionRequest, opts ...grpc.CallOption) (*RemoveReactionResponse, error)
 	ListReactions(ctx context.Context, in *ListReactionsRequest, opts ...grpc.CallOption) (*ListReactionsResponse, error)
@@ -179,11 +206,41 @@ type BrowserClient interface {
 	GetSelection(ctx context.Context, in *GetSelectionRequest, opts ...grpc.CallOption) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(ctx context.Context, in *SolveCaptchaRequest, opts ...grpc.CallOption) (*SolveCaptchaResponse, error)
-	// Live streaming (WebRTC). The page is streamed as a video track over a
+	// Solves captchas on the session's pages as they appear, without being
+	// asked: every page, frame and popup, including ones opened later. Each
+	// solve is reported on StreamContextEvents (captcha_detected, then exactly
+	// one captcha_resolved with the same solve_id).
+	//
+	// A Click, Drag, Fill or Type running on the page when a captcha appears is
+	// held at its next safe point — between two keys, before the button goes
+	// down — and carries on after the solve; its result lists the solve under
+	// captchas. One started while a solve runs waits for it. Time spent held
+	// does not count against the command's timeout, nor against a WaitForAny's.
+	// InsertText and PressKey/ReleaseKey are refused with code "busy" while a
+	// solve runs. While a WaitForAny with a captcha condition runs on a page,
+	// auto-solve leaves that page's captchas alone, so the wait sees them
+	// first.
+	//
+	// Calling it again replaces the settings; solves already running keep the
+	// ones they started with. Lasts until DisableCaptchaAutoSolve or the end of
+	// the session.
+	EnableCaptchaAutoSolve(ctx context.Context, in *EnableCaptchaAutoSolveRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	// Stops auto-solve. A solve already running finishes; one waiting for the
+	// focus is resolved with code "disabled".
+	DisableCaptchaAutoSolve(ctx context.Context, in *DisableCaptchaAutoSolveRequest, opts ...grpc.CallOption) (*DisableCaptchaAutoSolveResponse, error)
+	// Live streaming (WebRTC). The session is streamed as a video track over a
 	// WebRTC PeerConnection whose media is relayed through the TURN server. The
 	// caller creates the offer (client-offerer); the browser answers it.
 	// GetStreamConfig first hands out the ICE servers the client needs to build
 	// that offer.
+	//
+	// The stream shows the page that has the focus and follows it: when a tab
+	// or popup comes to the front, or FocusPage brings another page forward,
+	// picture and input move there and the new viewport is pushed on the
+	// "input" channel. While the shown page closes, the last picture stays
+	// until the next page is shown; the stream keeps running. One stream per
+	// session. Before the first CreatePage there is nothing to show, and
+	// StartStream fails with NO_PAGE.
 	GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error)
 	StartStream(ctx context.Context, in *StartStreamRequest, opts ...grpc.CallOption) (*StartStreamResponse, error)
 	StopStream(ctx context.Context, in *StopStreamRequest, opts ...grpc.CallOption) (*CommandResult, error)
@@ -236,6 +293,65 @@ func (c *browserClient) GetPages(ctx context.Context, in *GetPagesRequest, opts 
 	}
 	return out, nil
 }
+
+func (c *browserClient) CreatePage(ctx context.Context, in *CreatePageRequest, opts ...grpc.CallOption) (*CreatePageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePageResponse)
+	err := c.cc.Invoke(ctx, Browser_CreatePage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) GetFocusedPage(ctx context.Context, in *GetFocusedPageRequest, opts ...grpc.CallOption) (*GetFocusedPageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetFocusedPageResponse)
+	err := c.cc.Invoke(ctx, Browser_GetFocusedPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) FocusPage(ctx context.Context, in *FocusPageRequest, opts ...grpc.CallOption) (*CommandResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommandResult)
+	err := c.cc.Invoke(ctx, Browser_FocusPage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) ClosePage(ctx context.Context, in *ClosePageRequest, opts ...grpc.CallOption) (*ClosePageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ClosePageResponse)
+	err := c.cc.Invoke(ctx, Browser_ClosePage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) StreamContextEvents(ctx context.Context, in *StreamContextEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ContextEvent], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[0], Browser_StreamContextEvents_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[StreamContextEventsRequest, ContextEvent]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamContextEventsClient = grpc.ServerStreamingClient[ContextEvent]
 
 func (c *browserClient) GetUsage(ctx context.Context, in *GetUsageRequest, opts ...grpc.CallOption) (*GetUsageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
@@ -449,7 +565,7 @@ func (c *browserClient) StopNetworkCapture(ctx context.Context, in *StopNetworkC
 
 func (c *browserClient) StreamNetworkExchanges(ctx context.Context, in *StreamNetworkExchangesRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[NetworkExchangeEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[0], Browser_StreamNetworkExchanges_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[1], Browser_StreamNetworkExchanges_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -668,7 +784,7 @@ func (c *browserClient) GetDomRevision(ctx context.Context, in *GetDomRevisionRe
 
 func (c *browserClient) StreamDomEvents(ctx context.Context, in *StreamDomEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[DomEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[1], Browser_StreamDomEvents_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[2], Browser_StreamDomEvents_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -765,6 +881,26 @@ func (c *browserClient) SolveCaptcha(ctx context.Context, in *SolveCaptchaReques
 	return out, nil
 }
 
+func (c *browserClient) EnableCaptchaAutoSolve(ctx context.Context, in *EnableCaptchaAutoSolveRequest, opts ...grpc.CallOption) (*CommandResult, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CommandResult)
+	err := c.cc.Invoke(ctx, Browser_EnableCaptchaAutoSolve_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *browserClient) DisableCaptchaAutoSolve(ctx context.Context, in *DisableCaptchaAutoSolveRequest, opts ...grpc.CallOption) (*DisableCaptchaAutoSolveResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DisableCaptchaAutoSolveResponse)
+	err := c.cc.Invoke(ctx, Browser_DisableCaptchaAutoSolve_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) GetStreamConfig(ctx context.Context, in *GetStreamConfigRequest, opts ...grpc.CallOption) (*GetStreamConfigResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetStreamConfigResponse)
@@ -837,7 +973,7 @@ func (c *browserClient) ListScriptRuns(ctx context.Context, in *ListScriptRunsRe
 
 func (c *browserClient) StreamScriptEvents(ctx context.Context, in *StreamScriptEventsRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[ScriptEvent], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[2], Browser_StreamScriptEvents_FullMethodName, cOpts...)
+	stream, err := c.cc.NewStream(ctx, &Browser_ServiceDesc.Streams[3], Browser_StreamScriptEvents_FullMethodName, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -861,6 +997,24 @@ type BrowserServer interface {
 	// Context-level
 	SetProxy(context.Context, *SetProxyRequest) (*CommandResult, error)
 	GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error)
+	// Opens a page the way opening a new tab does: an about:blank tab that
+	// takes the focus. A session starts without a page, so this is the first
+	// call after rent; it answers once the page is ready for Navigate.
+	CreatePage(context.Context, *CreatePageRequest) (*CreatePageResponse, error)
+	// The page of the context that has the focus. Once the context has a page
+	// it always has one; before the first CreatePage this fails with NO_PAGE.
+	GetFocusedPage(context.Context, *GetFocusedPageRequest) (*GetFocusedPageResponse, error)
+	// Brings a page to the front, the way clicking its tab does.
+	FocusPage(context.Context, *FocusPageRequest) (*CommandResult, error)
+	// Closes a page the way closing its tab does, and reports which page has
+	// the focus afterwards.
+	ClosePage(context.Context, *ClosePageRequest) (*ClosePageResponse, error)
+	// The context's pages as they change: first a snapshot of every page, then
+	// each page opening, closing, taking the focus or changing its address or
+	// title, until the client goes away or the session ends. A snapshot can
+	// come again later; it then replaces everything the client holds. Applying
+	// the events in order to the last snapshot gives the current pages.
+	StreamContextEvents(*StreamContextEventsRequest, grpc.ServerStreamingServer[ContextEvent]) error
 	// What the session has consumed so far. The final figures need no call of
 	// their own: the stop endpoint returns them.
 	GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error)
@@ -879,8 +1033,10 @@ type BrowserServer interface {
 	Drag(context.Context, *DragRequest) (*DragResult, error)
 	Fill(context.Context, *FillRequest) (*FillResult, error)
 	// Reactions — one-shot background auto-click when a condition matches. A
-	// shared per-page poller fires only while the pointer is idle, so a reaction
-	// slots into the gaps of a retrying foreground action.
+	// reaction that fires pauses the running input action at a safe point,
+	// clicks, and lets the action carry on. A reaction belongs to one page or
+	// to every page of the session; each click is reported as reaction_fired on
+	// StreamContextEvents.
 	AddReaction(context.Context, *AddReactionRequest) (*AddReactionResponse, error)
 	RemoveReaction(context.Context, *RemoveReactionRequest) (*RemoveReactionResponse, error)
 	ListReactions(context.Context, *ListReactionsRequest) (*ListReactionsResponse, error)
@@ -951,11 +1107,41 @@ type BrowserServer interface {
 	GetSelection(context.Context, *GetSelectionRequest) (*GetSelectionResponse, error)
 	// Captcha solver
 	SolveCaptcha(context.Context, *SolveCaptchaRequest) (*SolveCaptchaResponse, error)
-	// Live streaming (WebRTC). The page is streamed as a video track over a
+	// Solves captchas on the session's pages as they appear, without being
+	// asked: every page, frame and popup, including ones opened later. Each
+	// solve is reported on StreamContextEvents (captcha_detected, then exactly
+	// one captcha_resolved with the same solve_id).
+	//
+	// A Click, Drag, Fill or Type running on the page when a captcha appears is
+	// held at its next safe point — between two keys, before the button goes
+	// down — and carries on after the solve; its result lists the solve under
+	// captchas. One started while a solve runs waits for it. Time spent held
+	// does not count against the command's timeout, nor against a WaitForAny's.
+	// InsertText and PressKey/ReleaseKey are refused with code "busy" while a
+	// solve runs. While a WaitForAny with a captcha condition runs on a page,
+	// auto-solve leaves that page's captchas alone, so the wait sees them
+	// first.
+	//
+	// Calling it again replaces the settings; solves already running keep the
+	// ones they started with. Lasts until DisableCaptchaAutoSolve or the end of
+	// the session.
+	EnableCaptchaAutoSolve(context.Context, *EnableCaptchaAutoSolveRequest) (*CommandResult, error)
+	// Stops auto-solve. A solve already running finishes; one waiting for the
+	// focus is resolved with code "disabled".
+	DisableCaptchaAutoSolve(context.Context, *DisableCaptchaAutoSolveRequest) (*DisableCaptchaAutoSolveResponse, error)
+	// Live streaming (WebRTC). The session is streamed as a video track over a
 	// WebRTC PeerConnection whose media is relayed through the TURN server. The
 	// caller creates the offer (client-offerer); the browser answers it.
 	// GetStreamConfig first hands out the ICE servers the client needs to build
 	// that offer.
+	//
+	// The stream shows the page that has the focus and follows it: when a tab
+	// or popup comes to the front, or FocusPage brings another page forward,
+	// picture and input move there and the new viewport is pushed on the
+	// "input" channel. While the shown page closes, the last picture stays
+	// until the next page is shown; the stream keeps running. One stream per
+	// session. Before the first CreatePage there is nothing to show, and
+	// StartStream fails with NO_PAGE.
 	GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error)
 	StartStream(context.Context, *StartStreamRequest) (*StartStreamResponse, error)
 	StopStream(context.Context, *StopStreamRequest) (*CommandResult, error)
@@ -994,6 +1180,21 @@ func (UnimplementedBrowserServer) SetProxy(context.Context, *SetProxyRequest) (*
 }
 func (UnimplementedBrowserServer) GetPages(context.Context, *GetPagesRequest) (*GetPagesResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPages not implemented")
+}
+func (UnimplementedBrowserServer) CreatePage(context.Context, *CreatePageRequest) (*CreatePageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreatePage not implemented")
+}
+func (UnimplementedBrowserServer) GetFocusedPage(context.Context, *GetFocusedPageRequest) (*GetFocusedPageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetFocusedPage not implemented")
+}
+func (UnimplementedBrowserServer) FocusPage(context.Context, *FocusPageRequest) (*CommandResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method FocusPage not implemented")
+}
+func (UnimplementedBrowserServer) ClosePage(context.Context, *ClosePageRequest) (*ClosePageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ClosePage not implemented")
+}
+func (UnimplementedBrowserServer) StreamContextEvents(*StreamContextEventsRequest, grpc.ServerStreamingServer[ContextEvent]) error {
+	return status.Errorf(codes.Unimplemented, "method StreamContextEvents not implemented")
 }
 func (UnimplementedBrowserServer) GetUsage(context.Context, *GetUsageRequest) (*GetUsageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUsage not implemented")
@@ -1148,6 +1349,12 @@ func (UnimplementedBrowserServer) GetSelection(context.Context, *GetSelectionReq
 func (UnimplementedBrowserServer) SolveCaptcha(context.Context, *SolveCaptchaRequest) (*SolveCaptchaResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SolveCaptcha not implemented")
 }
+func (UnimplementedBrowserServer) EnableCaptchaAutoSolve(context.Context, *EnableCaptchaAutoSolveRequest) (*CommandResult, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnableCaptchaAutoSolve not implemented")
+}
+func (UnimplementedBrowserServer) DisableCaptchaAutoSolve(context.Context, *DisableCaptchaAutoSolveRequest) (*DisableCaptchaAutoSolveResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DisableCaptchaAutoSolve not implemented")
+}
 func (UnimplementedBrowserServer) GetStreamConfig(context.Context, *GetStreamConfigRequest) (*GetStreamConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStreamConfig not implemented")
 }
@@ -1228,6 +1435,89 @@ func _Browser_GetPages_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	return interceptor(ctx, in, info, handler)
 }
+
+func _Browser_CreatePage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).CreatePage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_CreatePage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).CreatePage(ctx, req.(*CreatePageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_GetFocusedPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetFocusedPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetFocusedPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetFocusedPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetFocusedPage(ctx, req.(*GetFocusedPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_FocusPage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FocusPageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).FocusPage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_FocusPage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).FocusPage(ctx, req.(*FocusPageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_ClosePage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClosePageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).ClosePage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_ClosePage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).ClosePage(ctx, req.(*ClosePageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_StreamContextEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamContextEventsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(BrowserServer).StreamContextEvents(m, &grpc.GenericServerStream[StreamContextEventsRequest, ContextEvent]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type Browser_StreamContextEventsServer = grpc.ServerStreamingServer[ContextEvent]
 
 func _Browser_GetUsage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetUsageRequest)
@@ -2133,6 +2423,42 @@ func _Browser_SolveCaptcha_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_EnableCaptchaAutoSolve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnableCaptchaAutoSolveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).EnableCaptchaAutoSolve(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_EnableCaptchaAutoSolve_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).EnableCaptchaAutoSolve(ctx, req.(*EnableCaptchaAutoSolveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Browser_DisableCaptchaAutoSolve_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DisableCaptchaAutoSolveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).DisableCaptchaAutoSolve(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_DisableCaptchaAutoSolve_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).DisableCaptchaAutoSolve(ctx, req.(*DisableCaptchaAutoSolveRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Browser_GetStreamConfig_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetStreamConfigRequest)
 	if err := dec(in); err != nil {
@@ -2284,6 +2610,22 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPages",
 			Handler:    _Browser_GetPages_Handler,
+		},
+		{
+			MethodName: "CreatePage",
+			Handler:    _Browser_CreatePage_Handler,
+		},
+		{
+			MethodName: "GetFocusedPage",
+			Handler:    _Browser_GetFocusedPage_Handler,
+		},
+		{
+			MethodName: "FocusPage",
+			Handler:    _Browser_FocusPage_Handler,
+		},
+		{
+			MethodName: "ClosePage",
+			Handler:    _Browser_ClosePage_Handler,
 		},
 		{
 			MethodName: "GetUsage",
@@ -2482,6 +2824,14 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Browser_SolveCaptcha_Handler,
 		},
 		{
+			MethodName: "EnableCaptchaAutoSolve",
+			Handler:    _Browser_EnableCaptchaAutoSolve_Handler,
+		},
+		{
+			MethodName: "DisableCaptchaAutoSolve",
+			Handler:    _Browser_DisableCaptchaAutoSolve_Handler,
+		},
+		{
 			MethodName: "GetStreamConfig",
 			Handler:    _Browser_GetStreamConfig_Handler,
 		},
@@ -2511,6 +2861,11 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "StreamContextEvents",
+			Handler:       _Browser_StreamContextEvents_Handler,
+			ServerStreams: true,
+		},
 		{
 			StreamName:    "StreamNetworkExchanges",
 			Handler:       _Browser_StreamNetworkExchanges_Handler,

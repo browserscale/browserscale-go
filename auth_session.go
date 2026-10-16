@@ -83,7 +83,7 @@ func (c *CloudBrowser) GetAuthSession(ctx context.Context) (*AuthSession, error)
 // @example
 //
 //	_ = browser.SetAuthSession(ctx, *saved)
-//	_ = browser.Navigate(ctx, "https://mail.google.com")
+//	_ = page.Navigate(ctx, "https://mail.google.com")
 func (c *CloudBrowser) SetAuthSession(ctx context.Context, session AuthSession) error {
 	resp, err := c.client.SetAuthSession(ctx, &generated.SetAuthSessionRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,

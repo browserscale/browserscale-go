@@ -60,16 +60,22 @@ func sessionUsageFromProto(u *generated.SessionUsage) *SessionUsage {
 	}
 }
 
-func pageInfoFromProto(p *generated.PageInfo) *PageInfo {
+func (c *CloudBrowser) pageInfoFromProto(p *generated.PageInfo) *PageInfo {
 	if p == nil {
 		return nil
 	}
 	out := &PageInfo{
-		PageId:           p.PageId,
+		Page:             c.GetPage(p.PageId),
 		BrowserContextId: p.BrowserContextId,
 		Url:              p.Url,
 		Title:            p.Title,
 		Viewport:         rectFromProto(p.Viewport),
+		IsFocused:        p.IsFocused,
+		IsPopup:          p.IsPopup,
+		OpenerFrameId:    p.GetOpenerFrameId(),
+	}
+	if id := p.GetOpenerPageId(); id != "" {
+		out.Opener = c.GetPage(id)
 	}
 	if f := frameInfoFromProto(p.FrameTree); f != nil {
 		out.FrameTree = *f
@@ -257,11 +263,18 @@ func waitResultFromProto(r *generated.WaitResult) (*WaitResult, *WaitError) {
 		return nil, nil
 	}
 	res := &WaitResult{
-		Index:         r.Index,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
-		IsVisible:     r.IsVisible,
-		Bounds:        rectFromProto(r.Bounds),
+		Index:    r.Index,
+		Kind:     WaitKind(r.Kind),
+		Request:  interceptedRequestFromProto(r.Request),
+		Response: interceptedResponseFromProto(r.Response),
+	}
+	if e := r.Element; e != nil {
+		res.Element = &WaitElement{
+			FrameId:       e.FrameId,
+			BackendNodeId: e.BackendNodeId,
+			IsVisible:     e.IsVisible,
+			Bounds:        rectFromProto(e.Bounds),
+		}
 	}
 	if r.Error == nil {
 		return res, nil
@@ -333,11 +346,28 @@ func clickResultFromProto(r *generated.ClickResult) (*ElementResult, *ClickError
 		Bounds:        rectFromProto(r.Bounds),
 		RootX:         r.RootX,
 		RootY:         r.RootY,
+		Captchas:      captchaInterruptionsFromProto(r.Captchas),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
 	}
 	return res, clickErrorFromProto(r.Error)
+}
+
+func captchaInterruptionsFromProto(cs []*generated.CaptchaInterruption) []CaptchaInterruption {
+	if len(cs) == 0 {
+		return nil
+	}
+	out := make([]CaptchaInterruption, len(cs))
+	for i, c := range cs {
+		out[i] = CaptchaInterruption{
+			SolveId:    c.GetSolveId(),
+			Success:    c.GetSuccess(),
+			DurationMs: c.GetDurationMs(),
+			Outcome:    c.GetOutcome(),
+		}
+	}
+	return out
 }
 
 func clickErrorFromProto(e *generated.ClickError) *ClickError {
@@ -349,6 +379,7 @@ func clickErrorFromProto(e *generated.ClickError) *ClickError {
 		Message:        e.Message,
 		Occluder:       occluderInfoFromProto(e.Occluder),
 		EvadeAttempted: e.GetEvadeAttempted(),
+		FocusedPageId:  e.GetFocusedPageId(),
 	}
 }
 
@@ -366,6 +397,7 @@ func fillResultFromProto(r *generated.FillResult) (*ElementResult, *FillError) {
 		BackendNodeId: r.BackendNodeId,
 		RootX:         r.RootX,
 		RootY:         r.RootY,
+		Captchas:      captchaInterruptionsFromProto(r.Captchas),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -447,6 +479,7 @@ func dragResultFromProto(r *generated.DragResult) (*DragResult, *DragError) {
 		StartY:        r.StartY,
 		EndX:          r.EndX,
 		EndY:          r.EndY,
+		Captchas:      captchaInterruptionsFromProto(r.Captchas),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -497,7 +530,7 @@ func moveResultFromProto(r *generated.MoveResult) (*ElementResult, *MoveError) {
 	if r.Success || r.Error == nil {
 		return res, nil
 	}
-	return res, &MoveError{Code: r.Error.Code, Message: r.Error.Message}
+	return res, &MoveError{Code: r.Error.Code, Message: r.Error.Message, FocusedPageId: r.Error.GetFocusedPageId()}
 }
 
 // selectOptionResultFromProto splits a SelectOptionResult into the res, err

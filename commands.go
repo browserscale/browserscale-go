@@ -20,15 +20,18 @@ import (
 // @param proxyPort - upstream proxy port; ignored when proxyHost is empty
 // @param proxyUsername - proxy auth user (empty for unauthenticated proxies)
 // @param proxyPassword - proxy auth password (empty for unauthenticated proxies)
+// @param opts - [ProxyWithScheme] and [ProxyWithMasque], as for a rental
 //
-// Reports only transport failures - a dead session, a page that is gone, a
-// broken connection. This call has no semantic failure of its own, so there are
-// no error codes to branch on.
+// Unlike a rental, the new proxy is not checked first. An invalid scheme or
+// MASQUE address is refused with INVALID_PROXY; otherwise this reports only
+// transport failures - a dead session, a broken connection.
 //
 // @example
 //
 //	_ = browser.SetProxy(ctx, "proxy.example.com", 8080, "user", "pass")
-func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort int32, proxyUsername, proxyPassword string) error {
+//	_ = browser.SetProxy(ctx, "proxy.example.com", 1080, "user", "pass",
+//	    browserscale.ProxyWithScheme(browserscale.ProxySOCKS5))
+func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort int32, proxyUsername, proxyPassword string, opts ...ProxyOption) error {
 	req := &generated.SetProxyRequest{SessionId: c.sessionId, ApiKey: c.apiKey}
 	if proxyHost != "" {
 		req.ProxyHost = &proxyHost
@@ -42,6 +45,18 @@ func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort
 			pw := proxyPassword
 			req.ProxyPassword = &pw
 		}
+		var o proxyOptions
+		for _, opt := range opts {
+			opt(&o)
+		}
+		if o.scheme != "" {
+			s := string(o.scheme)
+			req.ProxyScheme = &s
+		}
+		if o.masque != "" {
+			m := o.masque
+			req.MasqueProxy = &m
+		}
 	}
 	resp, err := c.client.SetProxy(ctx, req)
 	if err != nil {
@@ -50,28 +65,52 @@ func (c *CloudBrowser) SetProxy(ctx context.Context, proxyHost string, proxyPort
 	return commandErrorFrom("setProxy", resp.GetError())
 }
 
-// GetPages returns all open pages (tabs and popups) for this session's
+// ProxyOption sets an optional part of the proxy passed to
+// [CloudBrowser.SetProxy].
+type ProxyOption func(*proxyOptions)
+
+type proxyOptions struct {
+	scheme ProxyScheme
+	masque string
+}
+
+// ProxyWithScheme sets the proxy's protocol, as
+// [BrowserConfig.WithProxyScheme] does for a rental.
+func ProxyWithScheme(scheme ProxyScheme) ProxyOption {
+	return func(o *proxyOptions) { o.scheme = scheme }
+}
+
+// ProxyWithMasque carries HTTP/3 through a MASQUE proxy ("host:port") with
+// the proxy's credentials, as [BrowserConfig.WithMasque] does for a rental.
+func ProxyWithMasque(hostPort string) ProxyOption {
+	return func(o *proxyOptions) { o.masque = hostPort }
+}
+
+// Pages returns all open pages (tabs and popups) for this session's
 // browser context.
 //
-// Each [PageInfo] carries the page's URL, title, viewport and a full nested
-// frame tree (out-of-process iframes are children of the page's main frame).
+// Each [PageInfo] carries the [Page] to act on, its URL, title, viewport, a
+// full nested frame tree (out-of-process iframes are children of the page's
+// main frame), whether it has the focus, and where it came from.
 //
 // @returns []*PageInfo for every page currently open in the context
 //
-// Reports only transport failures - a dead session, a page that is gone, a
-// broken connection. This call has no semantic failure of its own, so there are
-// no error codes to branch on.
+// Reports only transport failures - a dead session, a broken connection. This
+// call has no semantic failure of its own, so there are no error codes to
+// branch on.
 //
 // @example
 //
-//	pages, err := browser.GetPages(ctx)
+//	pages, err := browser.Pages(ctx)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	for _, p := range pages {
-//	    fmt.Println(p.Url, p.Title)
+//	    if p.IsPopup && p.Opener != nil {
+//	        fmt.Println("popup", p.Url, "opened by", p.Opener.Id())
+//	    }
 //	}
-func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
+func (c *CloudBrowser) Pages(ctx context.Context) ([]*PageInfo, error) {
 	resp, err := c.client.GetPages(ctx, &generated.GetPagesRequest{
 		SessionId: c.sessionId, ApiKey: c.apiKey,
 	})
@@ -83,7 +122,7 @@ func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
 	}
 	out := make([]*PageInfo, len(resp.Pages))
 	for i, p := range resp.Pages {
-		out[i] = pageInfoFromProto(p)
+		out[i] = c.pageInfoFromProto(p)
 	}
 	return out, nil
 }
@@ -103,7 +142,7 @@ func (c *CloudBrowser) GetPages(ctx context.Context) ([]*PageInfo, error) {
 // @example
 //
 //	before, _ := browser.GetUsage(ctx)
-//	_, _ = browser.Navigate(ctx, "https://example.com", 0)
+//	_, _ = page.Navigate(ctx, "https://example.com", 0)
 //	after, _ := browser.GetUsage(ctx)
 //	fmt.Printf("navigation cost %.2fs of CPU\n", after.CpuTime-before.CpuTime)
 func (c *CloudBrowser) GetUsage(ctx context.Context) (*SessionUsage, error) {
@@ -149,13 +188,13 @@ func (c *CloudBrowser) GetUsage(ctx context.Context) (*SessionUsage, error) {
 //
 // @example
 //
-//	_, err := browser.Navigate(ctx, "https://example.com", 0)
+//	_, err := page.Navigate(ctx, "https://example.com", 0)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) Navigate(ctx context.Context, url string, timeoutMs float64) (*NavigateResult, error) {
-	resp, err := c.client.Navigate(ctx, &generated.NavigateRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) Navigate(ctx context.Context, url string, timeoutMs float64) (*NavigateResult, error) {
+	resp, err := p.client.Navigate(ctx, &generated.NavigateRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Url:     url,
 		Timeout: floatPtrIfNonZero(timeoutMs),
 	})
@@ -173,7 +212,7 @@ func (c *CloudBrowser) Navigate(ctx context.Context, url string, timeoutMs float
 // Registers a one-shot interceptor that intercepts the next request to url
 // and replies with the supplied html and headers instead of going to the
 // network. Useful for snapshotted pages, test fixtures, and offline replays.
-// Pair with [CloudBrowser.Navigate] to trigger the load.
+// Pair with [Page.Navigate] to trigger the load.
 //
 // @param url - the URL pattern that, when navigated to, returns the html
 // @param html - the response body to serve
@@ -188,11 +227,11 @@ func (c *CloudBrowser) Navigate(ctx context.Context, url string, timeoutMs float
 //
 // @example
 //
-//	_ = browser.LoadHTML(ctx, "https://example.com", "<h1>hi</h1>", nil, 0)
-//	_, _ = browser.Navigate(ctx, "https://example.com", 0)
-func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers []Header, statusCode int32) error {
+//	_ = page.LoadHTML(ctx, "https://example.com", "<h1>hi</h1>", nil, 0)
+//	_, _ = page.Navigate(ctx, "https://example.com", 0)
+func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header, statusCode int32) error {
 	req := &generated.LoadHTMLRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Url:     url,
 		Html:    html,
 		Headers: headersToProto(headers),
@@ -201,7 +240,7 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 		s := statusCode
 		req.StatusCode = &s
 	}
-	resp, err := c.client.LoadHTML(ctx, req)
+	resp, err := p.client.LoadHTML(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -238,7 +277,7 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 //
 // @example
 //
-//	res, err := browser.Evaluate(ctx, "document.title")
+//	res, err := page.Evaluate(ctx, "document.title")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
@@ -247,7 +286,7 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 // @example
 //
 //	// Telling a false answer from a broken expression.
-//	res, err := browser.Evaluate(ctx, "window.__ready === true")
+//	res, err := page.Evaluate(ctx, "window.__ready === true")
 //	var ce *browserscale.CommandError
 //	if errors.As(err, &ce) {
 //	    log.Fatalf("expression is broken: %v", ce)
@@ -255,31 +294,31 @@ func (c *CloudBrowser) LoadHTML(ctx context.Context, url, html string, headers [
 //	if res.Value != true {
 //	    // legitimately not ready yet
 //	}
-func (c *CloudBrowser) Evaluate(ctx context.Context, expression string) (*EvaluateResult, error) {
-	return c.evaluate(ctx, "", expression)
+func (p *Page) Evaluate(ctx context.Context, expression string) (*EvaluateResult, error) {
+	return p.evaluate(ctx, "", expression)
 }
 
 // EvaluateInFrame runs a JavaScript expression in the given frame.
 //
-// Same semantics as [CloudBrowser.Evaluate] but targets a specific frame
+// Same semantics as [Page.Evaluate] but targets a specific frame
 // instead of the main frame. Useful for evaluating inside OOPIFs (out-of-
-// process iframes) found via [CloudBrowser.GetPages].
+// process iframes) found via [CloudBrowser.Pages].
 //
-// @inheritDoc [CloudBrowser.Evaluate]
+// @inheritDoc [Page.Evaluate]
 // @param frameId - id of the frame to evaluate in; empty falls back to the main frame
 //
 // @example
 //
-//	pages, _ := browser.GetPages(ctx)
+//	pages, _ := browser.Pages(ctx)
 //	iframeId := pages[0].FrameTree.Children[0].FrameId
-//	_, _ = browser.EvaluateInFrame(ctx, iframeId, "location.href")
-func (c *CloudBrowser) EvaluateInFrame(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
-	return c.evaluate(ctx, frameId, expression)
+//	_, _ = page.EvaluateInFrame(ctx, iframeId, "location.href")
+func (p *Page) EvaluateInFrame(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
+	return p.evaluate(ctx, frameId, expression)
 }
 
-func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
-	resp, err := c.client.Evaluate(ctx, &generated.EvaluateRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) evaluate(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
+	resp, err := p.client.Evaluate(ctx, &generated.EvaluateRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Expression: expression,
 		FrameId:    strPtr(frameId),
 	})
@@ -342,7 +381,7 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 //
 // The shape matches Chrome DevTools' Protocol DOM.Node — useful for piping
 // into agent loops or visualizers that already speak CDP. For a much smaller
-// agent-oriented payload, prefer [CloudBrowser.GetObservation] instead.
+// agent-oriented payload, prefer [Page.GetObservation] instead.
 //
 // @param frameId - id of the frame to dump; empty targets the main frame
 // @param depth - tree depth: -1 for the full tree, 0 for root only, N for
@@ -357,14 +396,14 @@ func (c *CloudBrowser) evaluate(ctx context.Context, frameId, expression string)
 //
 // @example
 //
-//	tree, err := browser.GetDOM(ctx, "", -1)
+//	tree, err := page.GetDOM(ctx, "", -1)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(tree)
-func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) (string, error) {
-	resp, err := c.client.GetDOM(ctx, &generated.GetDOMRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) GetDOM(ctx context.Context, frameId string, depth int32) (string, error) {
+	resp, err := p.client.GetDOM(ctx, &generated.GetDOMRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		FrameId: strPtr(frameId),
 		Depth:   intPtr(depth),
 	})
@@ -391,7 +430,7 @@ func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) 
 // right now (passwords as a length), checked= for boxes. The trailing quoted
 // string is always the label or text, never the value, so an empty and a
 // prefilled field stay distinguishable. Because the headers already carry URL,
-// title and scroll offset, this replaces the usual handful of [CloudBrowser.Evaluate]
+// title and scroll offset, this replaces the usual handful of [Page.Evaluate]
 // probes after each step.
 //
 // On what to do with the result: backendNodeId (the 47 above) is a handle for
@@ -410,39 +449,39 @@ func (c *CloudBrowser) GetDOM(ctx context.Context, frameId string, depth int32) 
 //
 // @example
 //
-//	obs, err := browser.GetObservation(ctx)
+//	obs, err := page.GetObservation(ctx)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(obs)
-func (c *CloudBrowser) GetObservation(ctx context.Context) (string, error) {
-	return c.getObservation(ctx, ObservationOpts{})
+func (p *Page) GetObservation(ctx context.Context) (string, error) {
+	return p.getObservation(ctx, ObservationOpts{})
 }
 
-// GetObservationWith is the customizable variant of [CloudBrowser.GetObservation].
+// GetObservationWith is the customizable variant of [Page.GetObservation].
 //
-// @inheritDoc [CloudBrowser.GetObservation]
+// @inheritDoc [Page.GetObservation]
 // @param opts - observation customization; see [ObservationOpts]
 //
 // @example
 //
 //	// Only what is on screen right now, as structured JSON.
-//	obs, err := browser.GetObservationWith(ctx, browserscale.ObservationOpts{
+//	obs, err := page.GetObservationWith(ctx, browserscale.ObservationOpts{
 //	    Format:       "json",
 //	    ViewportOnly: true,
 //	})
 //
 //	// Re-read just one form after the first full look.
-//	obs, err = browser.GetObservationWith(ctx, browserscale.ObservationOpts{
+//	obs, err = page.GetObservationWith(ctx, browserscale.ObservationOpts{
 //	    Selector: "form#register",
 //	})
-func (c *CloudBrowser) GetObservationWith(ctx context.Context, opts ObservationOpts) (string, error) {
-	return c.getObservation(ctx, opts)
+func (p *Page) GetObservationWith(ctx context.Context, opts ObservationOpts) (string, error) {
+	return p.getObservation(ctx, opts)
 }
 
-func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (string, error) {
+func (p *Page) getObservation(ctx context.Context, o ObservationOpts) (string, error) {
 	req := &generated.GetObservationRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		MaxElementsPerFrame: intPtr(o.MaxElementsPerFrame),
 		MaxTextLength:       intPtr(o.MaxTextLength),
 		MaxTotalTokens:      intPtr(o.MaxTotalTokens),
@@ -460,7 +499,7 @@ func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (s
 	if o.ViewportOnly {
 		req.ViewportOnly = Ptr(true)
 	}
-	resp, err := c.client.GetObservation(ctx, req)
+	resp, err := p.client.GetObservation(ctx, req)
 	if err != nil {
 		return "", err
 	}
@@ -497,15 +536,15 @@ func (c *CloudBrowser) getObservation(ctx context.Context, o ObservationOpts) (s
 //
 // @example
 //
-//	shot, err := browser.Screenshot(ctx, "png", 0)
+//	shot, err := page.Screenshot(ctx, "png", 0)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	img, _ := base64.StdEncoding.DecodeString(shot.DataBase64)
 //	os.WriteFile("page.png", img, 0o644)
-func (c *CloudBrowser) Screenshot(ctx context.Context, format string, quality int32) (*ScreenshotResult, error) {
-	resp, err := c.client.Screenshot(ctx, &generated.ScreenshotRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) Screenshot(ctx context.Context, format string, quality int32) (*ScreenshotResult, error) {
+	resp, err := p.client.Screenshot(ctx, &generated.ScreenshotRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Format:  strPtr(format),
 		Quality: intPtr(quality),
 	})

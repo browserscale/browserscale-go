@@ -6,7 +6,7 @@ import (
 	"github.com/browserscale/browserscale-go/generated"
 )
 
-// ClickOpts customizes a [CloudBrowser.ClickWith] call.
+// ClickOpts customizes a [Page.ClickWith] call.
 // Zero/empty values mean "use the server default".
 type ClickOpts struct {
 	// InFrame overrides the locator's own frame.
@@ -34,7 +34,7 @@ type ClickOpts struct {
 // The element does not have to be ready when you call this. For up to 5s the
 // browser keeps re-locating it, scrolls it into view, waits for its bounds to
 // hold still for 750ms, and hit-tests the exact point it is about to press — so
-// a plain Click also does the work of a preceding [CloudBrowser.Wait], and
+// a plain Click also does the work of a preceding [Page.Wait], and
 // needs no retry loop of your own. If the element never settles within that
 // budget the click is attempted at the deadline rather than abandoned.
 //
@@ -66,19 +66,21 @@ type ClickOpts struct {
 // exposed part left to click
 // @throws occluded_after_evade - a reposition was tried and the target was still
 // covered
+// @throws captcha_failed - a captcha held the click and could not be solved
+// (see [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // A target that is empty or names several things at once is rejected before
 // anything is sent. A closed page or a frame that is gone is a transport failure
 // rather than a code.
 //
 // @see [ClickError] for the occlusion-failure detail
-// @see [CloudBrowser.ClickWith] for right-click, double-click,
+// @see [Page.ClickWith] for right-click, double-click,
 //
 //	press/release-only, or frame override
 //
 // @example
 //
-//	res, err := browser.Click(ctx, browserscale.CSS("button.submit"))
+//	res, err := page.Click(ctx, browserscale.CSS("button.submit"))
 //	if err != nil {
 //	    var ce *browserscale.ClickError
 //	    if errors.As(err, &ce) {
@@ -86,34 +88,35 @@ type ClickOpts struct {
 //	    }
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) Click(ctx context.Context, target *Locator) (*ElementResult, error) {
-	return c.clickWith(ctx, target, ClickOpts{})
+func (p *Page) Click(ctx context.Context, target *Locator) (*ElementResult, error) {
+	return p.clickWith(ctx, target, ClickOpts{})
 }
 
-// ClickWith is the customizable variant of [CloudBrowser.Click].
+// ClickWith is the customizable variant of [Page.Click].
 //
-// @inheritDoc [CloudBrowser.Click]
+// @inheritDoc [Page.Click]
 // @param opts - click customization; see [ClickOpts]
 //
 // @example
 //
 //	// Right double-click on a context menu trigger.
-//	_, err := browser.ClickWith(ctx, browserscale.CSS("li.menu"), browserscale.ClickOpts{
+//	_, err := page.ClickWith(ctx, browserscale.CSS("li.menu"), browserscale.ClickOpts{
 //	    Button:     "right",
 //	    ClickCount: 2,
 //	})
-func (c *CloudBrowser) ClickWith(ctx context.Context, target *Locator, opts ClickOpts) (*ElementResult, error) {
-	return c.clickWith(ctx, target, opts)
+func (p *Page) ClickWith(ctx context.Context, target *Locator, opts ClickOpts) (*ElementResult, error) {
+	return p.clickWith(ctx, target, opts)
 }
 
-func (c *CloudBrowser) clickWith(ctx context.Context, target *Locator, o ClickOpts) (*ElementResult, error) {
+func (p *Page) clickWith(ctx context.Context, target *Locator, o ClickOpts) (*ElementResult, error) {
 	if err := target.validateTarget("Click", true); err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.Click(ctx, &generated.ClickRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+	resp, err := p.client.Click(ctx, &generated.ClickRequest{
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -132,7 +135,7 @@ func (c *CloudBrowser) clickWith(ctx context.Context, target *Locator, o ClickOp
 	// so the res, err shape stays identical to the other actions.
 	res, clickErr := clickResultFromProto(resp)
 	if clickErr != nil {
-		return res, clickErr
+		return res, p.notFocused(clickErr)
 	}
 	return res, nil
 }

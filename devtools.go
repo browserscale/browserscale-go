@@ -19,7 +19,7 @@ import (
 // polling-based change detection.
 //
 // Computing a hash is much cheaper than transferring the full tree —
-// pair this with [CloudBrowser.GetDOM] only when the hash differs from
+// pair this with [Page.GetDOM] only when the hash differs from
 // your last snapshot.
 //
 // @param frameId - id of the frame to hash; empty targets the main frame
@@ -31,16 +31,16 @@ import (
 //
 // @example
 //
-//	hash, err := browser.GetDOMHash(ctx, "")
+//	hash, err := page.GetDOMHash(ctx, "")
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	if hash != lastHash {
 //	    // DOM changed → re-fetch
 //	}
-func (c *CloudBrowser) GetDOMHash(ctx context.Context, frameId string) (string, error) {
-	resp, err := c.client.GetDOMHash(ctx, &generated.GetDOMHashRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) GetDOMHash(ctx context.Context, frameId string) (string, error) {
+	resp, err := p.client.GetDOMHash(ctx, &generated.GetDOMHashRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		FrameId: strPtr(frameId),
 	})
 	if err != nil {
@@ -69,14 +69,14 @@ func (c *CloudBrowser) GetDOMHash(ctx context.Context, frameId string) (string, 
 //
 // @example
 //
-//	res, err := browser.InspectAtPosition(ctx, 200, 300)
+//	res, err := page.InspectAtPosition(ctx, 200, 300)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(res.TagName, res.TextContent)
-func (c *CloudBrowser) InspectAtPosition(ctx context.Context, x, y float64) (*InspectResult, error) {
-	resp, err := c.client.InspectAtPosition(ctx, &generated.InspectAtPositionRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) InspectAtPosition(ctx context.Context, x, y float64) (*InspectResult, error) {
+	resp, err := p.client.InspectAtPosition(ctx, &generated.InspectAtPositionRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		X: x,
 		Y: y,
 	})
@@ -111,12 +111,12 @@ func (c *CloudBrowser) InspectAtPosition(ctx context.Context, x, y float64) (*In
 //
 // @example
 //
-//	if err := browser.HighlightNode(ctx, res.BackendNodeId, res.FrameId); err != nil {
+//	if err := page.HighlightNode(ctx, res.BackendNodeId, res.FrameId); err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) HighlightNode(ctx context.Context, backendNodeId int32, frameId string) error {
-	resp, err := c.client.HighlightNode(ctx, &generated.HighlightNodeRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) HighlightNode(ctx context.Context, backendNodeId int32, frameId string) error {
+	resp, err := p.client.HighlightNode(ctx, &generated.HighlightNodeRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 	})
@@ -132,25 +132,26 @@ func (c *CloudBrowser) HighlightNode(ctx context.Context, backendNodeId int32, f
 //
 // No individual key events are dispatched; the entire string is committed
 // at once via Input.insertText. Whatever element currently has focus
-// receives the text. Use [CloudBrowser.Click] or [CloudBrowser.Fill] first
+// receives the text. Use [Page.Click] or [Page.Fill] first
 // if you need a specific element to be focused.
 //
 // @param text - the text to insert at the caret
 //
 // @throws no_focus - nothing in the page holds focus, so there is no caret to
 // insert at; click the field first
-// @throws busy - another action is already running on this page
+// @throws busy - another action is already running on this page, or a captcha
+// is being solved there (see [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
-//	if err := browser.InsertText(ctx, "hello world"); err != nil {
+//	if err := page.InsertText(ctx, "hello world"); err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) InsertText(ctx context.Context, text string) error {
-	resp, err := c.client.InsertText(ctx, &generated.InsertTextRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) InsertText(ctx context.Context, text string) error {
+	resp, err := p.client.InsertText(ctx, &generated.InsertTextRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Text: text,
 	})
 	if err != nil {
@@ -161,43 +162,47 @@ func (c *CloudBrowser) InsertText(ctx context.Context, text string) error {
 
 // Type types text into the currently focused element as a per-key stream of
 // real keyboard events (keyDown/char/keyUp with the context's QWERTZ/QWERTY
-// layout and human cadence) — unlike [CloudBrowser.InsertText], a single
+// layout and human cadence) — unlike [Page.InsertText], a single
 // IME-style commit with no key events.
 //
 // Type is intentionally UNtargeted and loose: it does not locate or focus any
 // element and does NOT pin focus, so the page is free to route keys and move
 // focus between fields mid-stream — ideal for one-time-code / OTP inputs that
 // auto-advance to the next box on each digit. To type one specific field that
-// must stay focused for the whole value, use [CloudBrowser.Fill] instead
+// must stay focused for the whole value, use [Page.Fill] instead
 // (strict, target-bound, per-key focus-verified).
 //
-// Nothing is focused for you: [CloudBrowser.Click] (or Fill) the field first,
+// Nothing is focused for you: [Page.Click] (or Fill) the field first,
 // or otherwise ensure focus, before calling Type.
 //
 // @param text - the text to type as real key events
 // @param clearFirst - when true, clears the focused field (Ctrl+A, Delete) first
 //
-// Type has no semantic failure of its own: the keys land wherever focus happens
-// to be, so there is no target it can miss. Only the page or context being torn
-// down mid-stream surfaces, and that is a transport error rather than a code.
+// Type has no target it can miss: the keys land wherever focus happens to be.
+// A captcha solve holds it between two keys (see
+// [CloudBrowser.EnableCaptchaAutoSolve]); afterwards it puts the caret back and
+// types the rest. The page or context being torn down mid-stream is a
+// transport error rather than a code.
+//
+// @throws captcha_failed - a captcha held the typing and could not be solved
 //
 // @example
 //
 //	// OTP field that auto-advances across boxes.
-//	_, _ = browser.Click(ctx, browserscale.CSS("input.otp-0"))
-//	if err := browser.Type(ctx, "123456", false); err != nil {
+//	_, _ = page.Click(ctx, browserscale.CSS("input.otp-0"))
+//	if err := page.Type(ctx, "123456", false); err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) error {
+func (p *Page) Type(ctx context.Context, text string, clearFirst bool) error {
 	req := &generated.TypeRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Text: text,
 	}
 	if clearFirst {
 		t := true
 		req.ClearFirst = &t
 	}
-	resp, err := c.client.Type(ctx, req)
+	resp, err := p.client.Type(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -206,7 +211,7 @@ func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) e
 
 // PressKey fires a single key-down event.
 //
-// Only the keydown half is dispatched — pair with [CloudBrowser.ReleaseKey]
+// Only the keydown half is dispatched — pair with [Page.ReleaseKey]
 // for a full press cycle. The event targets whichever element currently has
 // focus.
 //
@@ -217,18 +222,19 @@ func (c *CloudBrowser) Type(ctx context.Context, text string, clearFirst bool) e
 //
 // @throws no_focus - nothing in the page holds focus, so the key has nowhere to
 // go; click the field first
-// @throws busy - another action is already running on this page
+// @throws busy - another action is already running on this page, or a captcha
+// is being solved there (see [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // @see [CommandError] for recovering the code with errors.As
 //
 // @example
 //
 //	// Ctrl+A
-//	_ = browser.PressKey(ctx, "a", "KeyA", 2, 0)
-//	_ = browser.ReleaseKey(ctx, "a", "KeyA", 2, 0)
-func (c *CloudBrowser) PressKey(ctx context.Context, key, code string, modifiers, location int32) error {
-	resp, err := c.client.PressKey(ctx, &generated.PressKeyRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+//	_ = page.PressKey(ctx, "a", "KeyA", 2, 0)
+//	_ = page.ReleaseKey(ctx, "a", "KeyA", 2, 0)
+func (p *Page) PressKey(ctx context.Context, key, code string, modifiers, location int32) error {
+	resp, err := p.client.PressKey(ctx, &generated.PressKeyRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Key:       key,
 		Code:      strPtr(code),
 		Modifiers: intPtr(modifiers),
@@ -242,18 +248,18 @@ func (c *CloudBrowser) PressKey(ctx context.Context, key, code string, modifiers
 
 // ReleaseKey fires a single key-up event.
 //
-// Mirror of [CloudBrowser.PressKey]. Same parameter semantics; use this to
+// Mirror of [Page.PressKey]. Same parameter semantics; use this to
 // close a press cycle that was started with PressKey.
 //
-// @inheritDoc [CloudBrowser.PressKey]
+// @inheritDoc [Page.PressKey]
 //
 // @example
 //
-//	_ = browser.PressKey(ctx, "Shift", "ShiftLeft", 0, 1)
-//	_ = browser.ReleaseKey(ctx, "Shift", "ShiftLeft", 0, 1)
-func (c *CloudBrowser) ReleaseKey(ctx context.Context, key, code string, modifiers, location int32) error {
-	resp, err := c.client.ReleaseKey(ctx, &generated.ReleaseKeyRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+//	_ = page.PressKey(ctx, "Shift", "ShiftLeft", 0, 1)
+//	_ = page.ReleaseKey(ctx, "Shift", "ShiftLeft", 0, 1)
+func (p *Page) ReleaseKey(ctx context.Context, key, code string, modifiers, location int32) error {
+	resp, err := p.client.ReleaseKey(ctx, &generated.ReleaseKeyRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Key:       key,
 		Code:      strPtr(code),
 		Modifiers: intPtr(modifiers),
@@ -279,14 +285,14 @@ func (c *CloudBrowser) ReleaseKey(ctx context.Context, key, code string, modifie
 //
 // @example
 //
-//	sel, err := browser.GetSelection(ctx)
+//	sel, err := page.GetSelection(ctx)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println("user selected:", sel)
-func (c *CloudBrowser) GetSelection(ctx context.Context) (string, error) {
-	resp, err := c.client.GetSelection(ctx, &generated.GetSelectionRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) GetSelection(ctx context.Context) (string, error) {
+	resp, err := p.client.GetSelection(ctx, &generated.GetSelectionRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 	})
 	if err != nil {
 		return "", err

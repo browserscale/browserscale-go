@@ -6,7 +6,7 @@ import (
 	"github.com/browserscale/browserscale-go/generated"
 )
 
-// FillOpts customizes a [CloudBrowser.FillWith] call.
+// FillOpts customizes a [Page.FillWith] call.
 // Zero/empty values mean "use the server default".
 type FillOpts struct {
 	// InFrame overrides the locator's own frame.
@@ -34,7 +34,7 @@ type FillOpts struct {
 // Fill clicks the target and types text into it, appending to any
 // existing content.
 //
-// The field is acquired with the same smart click as [CloudBrowser.Click]:
+// The field is acquired with the same smart click as [Page.Click]:
 // re-located, scrolled into view, settled and hit-tested within the timeout
 // budget, so it does not have to be present or ready yet. The cursor then
 // moves along a human-like path and clicks to focus.
@@ -51,9 +51,9 @@ type FillOpts struct {
 // element that holds focus instead so you can deal with it (a consent button,
 // a different field). For stream-style typing that is *supposed* to move
 // between fields, such as an OTP input that auto-advances, use
-// [CloudBrowser.Type] instead.
+// [Page.Type] instead.
 //
-// To overwrite the field instead of appending, use [CloudBrowser.FillWith]
+// To overwrite the field instead of appending, use [Page.FillWith]
 // with ClearFirst: true.
 //
 // [At] is not a valid target — Fill requires an actual element.
@@ -65,7 +65,7 @@ type FillOpts struct {
 //
 //	and the root-viewport (rootX, rootY) where the element was clicked
 //
-// Fill focuses the field with the same smart click as [CloudBrowser.Click], so
+// Fill focuses the field with the same smart click as [Page.Click], so
 // if the field could not be focused (not found, or occluded), err is a
 // [*FillError] whose ClickError carries the underlying occlusion detail. The
 // *ElementResult is still returned (with Success=false). Recover the detail
@@ -82,19 +82,21 @@ type FillOpts struct {
 // that interrupted
 // @throws focus_lost - focus left the field and nothing holds it anymore, so the
 // field vanished or turned readonly mid-stream
+// @throws captcha_failed - a captcha held the fill and could not be solved (see
+// [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // A target that is empty or names several things at once is rejected before
 // anything is sent. A closed page or a frame that is gone is a transport failure
 // rather than a code.
 //
 // @see [FillError] for the focus-failure detail
-// @see [CloudBrowser.FillWith] for clearing existing content or
+// @see [Page.FillWith] for clearing existing content or
 //
 //	overriding the target frame
 //
 // @example
 //
-//	res, err := browser.Fill(ctx, browserscale.CSS("input[name=email]"), "user@example.com")
+//	res, err := page.Fill(ctx, browserscale.CSS("input[name=email]"), "user@example.com")
 //	if err != nil {
 //	    var fe *browserscale.FillError
 //	    if errors.As(err, &fe) && fe.ClickError != nil {
@@ -103,33 +105,34 @@ type FillOpts struct {
 //	    log.Fatal(err)
 //	}
 //	_ = res
-func (c *CloudBrowser) Fill(ctx context.Context, target *Locator, text string) (*ElementResult, error) {
-	return c.fillWith(ctx, target, text, FillOpts{})
+func (p *Page) Fill(ctx context.Context, target *Locator, text string) (*ElementResult, error) {
+	return p.fillWith(ctx, target, text, FillOpts{})
 }
 
-// FillWith is the customizable variant of [CloudBrowser.Fill].
+// FillWith is the customizable variant of [Page.Fill].
 //
-// @inheritDoc [CloudBrowser.Fill]
+// @inheritDoc [Page.Fill]
 // @param opts - fill customization; see [FillOpts]
 //
 // @example
 //
 //	// Wipe the field first, then type fresh content.
-//	_, err := browser.FillWith(ctx, browserscale.CSS("input[name=email]"), "user@example.com", browserscale.FillOpts{
+//	_, err := page.FillWith(ctx, browserscale.CSS("input[name=email]"), "user@example.com", browserscale.FillOpts{
 //	    ClearFirst: true,
 //	})
-func (c *CloudBrowser) FillWith(ctx context.Context, target *Locator, text string, opts FillOpts) (*ElementResult, error) {
-	return c.fillWith(ctx, target, text, opts)
+func (p *Page) FillWith(ctx context.Context, target *Locator, text string, opts FillOpts) (*ElementResult, error) {
+	return p.fillWith(ctx, target, text, opts)
 }
 
-func (c *CloudBrowser) fillWith(ctx context.Context, target *Locator, text string, o FillOpts) (*ElementResult, error) {
+func (p *Page) fillWith(ctx context.Context, target *Locator, text string, o FillOpts) (*ElementResult, error) {
 	if err := target.validateTarget("Fill", false); err != nil {
 		return nil, err
 	}
 
 	req := &generated.FillRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -143,7 +146,7 @@ func (c *CloudBrowser) fillWith(ctx context.Context, target *Locator, text strin
 	req.Timeout = o.TimeoutMs
 	req.SteadyTime = o.SteadyMs
 
-	resp, err := c.client.Fill(ctx, req)
+	resp, err := p.client.Fill(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +155,7 @@ func (c *CloudBrowser) fillWith(ctx context.Context, target *Locator, text strin
 	// *FillError so the res, err shape stays identical to the other actions.
 	res, fillErr := fillResultFromProto(resp)
 	if fillErr != nil {
-		return res, fillErr
+		return res, p.notFocused(fillErr)
 	}
 	return res, nil
 }

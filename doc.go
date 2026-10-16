@@ -16,14 +16,18 @@
 //	}
 //	defer browser.Close()
 //
-//	if _, err := browser.Navigate(ctx, "https://example.com", 0); err != nil {
+//	page, err := browser.CreatePage(ctx) // a browser starts without a page
+//	if err != nil {
 //		log.Fatal(err)
 //	}
-//	if _, err := browser.Wait(ctx, browserscale.CSS("h1")); err != nil {
+//	if _, err := page.Navigate(ctx, "https://example.com", 0); err != nil {
+//		log.Fatal(err)
+//	}
+//	if _, err := page.Wait(ctx, browserscale.CSS("h1")); err != nil {
 //		log.Fatal(err)
 //	}
 //
-//	res, err := browser.Evaluate(ctx, "document.title")
+//	res, err := page.Evaluate(ctx, "document.title")
 //	if err != nil {
 //		log.Fatal(err)
 //	}

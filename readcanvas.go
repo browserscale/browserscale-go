@@ -6,7 +6,7 @@ import (
 	"github.com/browserscale/browserscale-go/generated"
 )
 
-// ReadCanvasOpts customizes a [CloudBrowser.ReadCanvasWith] call.
+// ReadCanvasOpts customizes a [Page.ReadCanvasWith] call.
 // Zero/empty values mean "use the server default".
 type ReadCanvasOpts struct {
 	// InFrame overrides the locator's own frame.
@@ -50,43 +50,44 @@ type ReadCanvasOpts struct {
 //
 // @see [CommandError] for recovering the code with errors.As
 //
-// @see [CloudBrowser.ReadCanvasWith] for format, quality, or a sub-rectangle
+// @see [Page.ReadCanvasWith] for format, quality, or a sub-rectangle
 //
 // @example
 //
-//	res, err := browser.ReadCanvas(ctx, browserscale.CSS("#game canvas"))
+//	res, err := page.ReadCanvas(ctx, browserscale.CSS("#game canvas"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	img, _ := base64.StdEncoding.DecodeString(res.DataBase64)
 //	os.WriteFile("canvas.png", img, 0o644)
-func (c *CloudBrowser) ReadCanvas(ctx context.Context, target *Locator) (*ReadCanvasResult, error) {
-	return c.readCanvasWith(ctx, target, ReadCanvasOpts{})
+func (p *Page) ReadCanvas(ctx context.Context, target *Locator) (*ReadCanvasResult, error) {
+	return p.readCanvasWith(ctx, target, ReadCanvasOpts{})
 }
 
-// ReadCanvasWith is the customizable variant of [CloudBrowser.ReadCanvas].
+// ReadCanvasWith is the customizable variant of [Page.ReadCanvas].
 //
-// @inheritDoc [CloudBrowser.ReadCanvas]
+// @inheritDoc [Page.ReadCanvas]
 // @param opts - format, quality, sub-rectangle and frame override; see [ReadCanvasOpts]
 //
 // @example
 //
 //	// Read the left half of the canvas as JPEG at quality 80.
-//	res, err := browser.ReadCanvasWith(ctx, browserscale.CSS("canvas"),
+//	res, err := page.ReadCanvasWith(ctx, browserscale.CSS("canvas"),
 //	    browserscale.ReadCanvasOpts{Format: "jpeg", Quality: 80, SW: 150, SH: 300})
-func (c *CloudBrowser) ReadCanvasWith(ctx context.Context, target *Locator, opts ReadCanvasOpts) (*ReadCanvasResult, error) {
-	return c.readCanvasWith(ctx, target, opts)
+func (p *Page) ReadCanvasWith(ctx context.Context, target *Locator, opts ReadCanvasOpts) (*ReadCanvasResult, error) {
+	return p.readCanvasWith(ctx, target, opts)
 }
 
-func (c *CloudBrowser) readCanvasWith(ctx context.Context, target *Locator, o ReadCanvasOpts) (*ReadCanvasResult, error) {
+func (p *Page) readCanvasWith(ctx context.Context, target *Locator, o ReadCanvasOpts) (*ReadCanvasResult, error) {
 	// A real <canvas> is required — At(x,y) coordinates are not valid here.
 	if err := target.validateTarget("ReadCanvas", false); err != nil {
 		return nil, err
 	}
 
 	req := &generated.ReadCanvasRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -101,7 +102,7 @@ func (c *CloudBrowser) readCanvasWith(ctx context.Context, target *Locator, o Re
 		req.Sh = intPtr(o.SH)
 	}
 
-	resp, err := c.client.ReadCanvas(ctx, req)
+	resp, err := p.client.ReadCanvas(ctx, req)
 	if err != nil {
 		return nil, err
 	}

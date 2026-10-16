@@ -62,22 +62,31 @@ type StreamAnswer struct {
 	// data channels expect. X/Y are always 0. Map your on-screen pointer
 	// positions into this space before sending them; the video may be
 	// displayed at any size. It arrives with the answer rather than from a
-	// separate GetPages so it cannot race the stream, and the browser pushes
+	// separate Pages call so it cannot race the stream, and the browser pushes
 	// {"type":"viewport","width":W,"height":H} on the reliable "input"
-	// channel whenever it changes.
+	// channel whenever it changes, including when the stream moves to
+	// another page.
 	Viewport Rect
 }
 
-// StartStream answers your WebRTC SDP offer and starts streaming the page as a
-// video track. The browser is the answerer; you are the offerer (see
+// StartStream answers your WebRTC SDP offer and starts streaming the session
+// as a video track. The browser is the answerer; you are the offerer (see
 // [CloudBrowser.GetStreamConfig] for the credentials to build the offer).
+//
+// The stream shows the page that has the focus and follows it: when a tab or
+// popup comes to the front, or [Page.Focus] brings another page forward,
+// picture and input move there and the new viewport arrives on the "input"
+// channel. While the shown page closes, the last picture stays until the next
+// page is shown; the stream keeps running.
 //
 // @param offerSDP - your RTCPeerConnection's SDP offer
 //
 // @returns the SDP answer plus the viewport to map input coordinates into
 //
-// @throws already_active - a stream is already running on this session; stop it
-// before starting another
+// @throws [ErrNoPage] - the browser has no page to show yet;
+// [CloudBrowser.CreatePage] opens the first
+// @throws already_active - the session already has a stream; stop it before
+// starting another
 // @throws negotiation_failed - the browser could not agree on a connection. The
 // message carries the negotiator's own diagnostic, which is usually where the
 // actual cause is
@@ -115,12 +124,12 @@ func (c *CloudBrowser) StartStream(ctx context.Context, offerSDP string) (Stream
 	}, err
 }
 
-// StopStream tears down the live video stream for the session's page. It is
-// safe to call even if no stream is running.
+// StopStream tears down the session's live video stream. It is safe to call
+// even if no stream is running.
 //
-// Reports only transport failures - a dead session, a page that is gone, a broken
-// connection. Stopping a stream that is not running is a no-op rather than a
-// failure, so there are no error codes to branch on.
+// Reports only transport failures - a dead session, a broken connection.
+// Stopping a stream that is not running is a no-op rather than a failure, so
+// there are no error codes to branch on.
 //
 // @example
 //

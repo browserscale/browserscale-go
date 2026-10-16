@@ -3,19 +3,18 @@ package browserscale
 // BrowserConfig holds all parameters for renting a browser session.
 // Use NewBrowserConfig with the required fields, then chain optional setters.
 type BrowserConfig struct {
-	apiKey          string
-	rentDuration    int
-	proxyHost       string
-	proxyPort       int
-	proxyUsername   string
-	proxyPassword   string
-	countryCode     string
-	timezone        string
-	fingerprint     string
-	webglRenderer   string
-	webglVendor     string
-	webglExtensions []string
-	gpuEnabled      bool
+	apiKey        string
+	rentDuration  int
+	proxyHost     string
+	proxyPort     int
+	proxyUsername string
+	proxyPassword string
+	proxyScheme   ProxyScheme
+	masqueProxy   string
+	countryCode   string
+	timezone      string
+	fingerprint   string
+	gpuEnabled    bool
 }
 
 // NewBrowserConfig returns a [BrowserConfig] populated with the required
@@ -45,6 +44,55 @@ func NewBrowserConfig(apiKey string, rentDuration int, proxyHost string, proxyPo
 		proxyUsername: proxyUsername,
 		proxyPassword: proxyPassword,
 	}
+}
+
+// ProxyScheme is the protocol the browser speaks to its proxy.
+type ProxyScheme string
+
+const (
+	// ProxyHTTP is an HTTP proxy (CONNECT); the default.
+	ProxyHTTP ProxyScheme = "http"
+	// ProxySOCKS5 is a SOCKS5 proxy. Host names are always resolved by the
+	// proxy, so "socks5h" means the same and is accepted too.
+	ProxySOCKS5 ProxyScheme = "socks5"
+)
+
+// WithProxyScheme sets the protocol of the proxy passed to
+// [NewBrowserConfig]. Without it the proxy is an HTTP proxy.
+//
+// @param scheme - [ProxyHTTP] or [ProxySOCKS5]
+//
+// @returns the modified *BrowserConfig for chaining
+//
+// @example
+//
+//	cfg := browserscale.NewBrowserConfig(apiKey, 600, "proxy.example.com", 1080, "user", "pass").
+//	    WithProxyScheme(browserscale.ProxySOCKS5)
+func (c *BrowserConfig) WithProxyScheme(scheme ProxyScheme) *BrowserConfig {
+	c.proxyScheme = scheme
+	return c
+}
+
+// WithMasque routes the session's HTTP/3 traffic through a MASQUE proxy
+// (CONNECT-UDP, RFC 9298), authenticated with the username and password of
+// the proxy passed to [NewBrowserConfig].
+//
+// The MASQUE proxy has to leave from the same exit IP as the proxy, so the
+// browser shows one address: the rental is refused when they differ. Use
+// credentials that keep their IP (a sticky session) where the provider
+// rotates. Without a MASQUE proxy, HTTP/3 falls back to the proxy over TCP.
+//
+// @param hostPort - the MASQUE proxy as "host:port"
+//
+// @returns the modified *BrowserConfig for chaining
+//
+// @example
+//
+//	cfg := browserscale.NewBrowserConfig(apiKey, 600, "proxy.example.com", 8080, "user", "pass").
+//	    WithMasque("masque.example.com:443")
+func (c *BrowserConfig) WithMasque(hostPort string) *BrowserConfig {
+	c.masqueProxy = hostPort
+	return c
 }
 
 // WithCountryCode sets the geo-IP country code for the rented session.
@@ -93,28 +141,6 @@ func (c *BrowserConfig) WithTimezone(timezone string) *BrowserConfig {
 //	cfg := browserscale.NewBrowserConfig(apiKey, 600, "", 0, "", "").WithFingerprint("fp_abc123")
 func (c *BrowserConfig) WithFingerprint(fingerprint string) *BrowserConfig {
 	c.fingerprint = fingerprint
-	return c
-}
-
-// UnstableWithFakeGpu overrides WebGL UNMASKED_RENDERER_WEBGL,
-// UNMASKED_VENDOR_WEBGL and getSupportedExtensions().
-//
-// Unstable API — likely to be reshaped or removed without notice. Use only
-// when you have a specific WebGL-fingerprint requirement.
-//
-// @param renderer - value to return for UNMASKED_RENDERER_WEBGL
-// @param vendor - value to return for UNMASKED_VENDOR_WEBGL
-// @param extensions - list returned by getSupportedExtensions()
-//
-// @returns the modified *BrowserConfig for chaining
-//
-// @example
-//
-//	cfg.UnstableWithFakeGpu("ANGLE", "Google Inc.", []string{"OES_texture_float"})
-func (c *BrowserConfig) UnstableWithFakeGpu(renderer string, vendor string, extensions []string) *BrowserConfig {
-	c.webglRenderer = renderer
-	c.webglVendor = vendor
-	c.webglExtensions = extensions
 	return c
 }
 

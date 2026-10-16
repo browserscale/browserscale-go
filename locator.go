@@ -7,9 +7,10 @@ import "fmt"
 // Locator.InFrame and XxxOpts.InFrame.
 const AllFrames = "ALL_FRAMES"
 
-// Locator is the universal "what element / what condition" type. It is used
-// both as a wait condition (passed to Wait) and as a target for element
-// actions (passed to Click, Fill, etc.).
+// Locator is the universal "what element" type. It is used both as a wait
+// condition (passed to Wait) and as a target for element actions (passed to
+// Click, Fill, etc.). Wait additionally takes conditions that are not
+// elements — [Captcha], [Request] and [Response] — which no action accepts.
 //
 // Not every field is meaningful in every context:
 //   - selector / jsExpression  → both wait and actions
@@ -36,7 +37,7 @@ type Locator struct {
 
 // CSS waits for / targets an element matching the given CSS selector.
 //
-// When used in [CloudBrowser.Wait], the condition requires the element to be
+// When used in [Page.Wait], the condition requires the element to be
 // visible and to hold still for 500ms before it matches — the API's defaults
 // for a condition that does not set them. Override per call with
 // [Locator.Visible] / [Locator.Steady] (use `.Steady(0)` to disable the steady
@@ -52,9 +53,9 @@ type Locator struct {
 // @example
 //
 //	// As a wait condition.
-//	_, _ = browser.Wait(ctx, browserscale.CSS("button.submit"))
+//	_, _ = page.Wait(ctx, browserscale.CSS("button.submit"))
 //	// As an action target.
-//	_, _ = browser.Click(ctx, browserscale.CSS("button.submit"))
+//	_, _ = page.Click(ctx, browserscale.CSS("button.submit"))
 func CSS(selector string) *Locator {
 	return &Locator{selector: selector}
 }
@@ -75,7 +76,7 @@ func CSS(selector string) *Locator {
 //
 // @example
 //
-//	_, _ = browser.Wait(ctx, browserscale.JS("window.__ready === true"))
+//	_, _ = page.Wait(ctx, browserscale.JS("window.__ready === true"))
 func JS(expression string) *Locator {
 	return &Locator{jsExpression: expression}
 }
@@ -83,9 +84,9 @@ func JS(expression string) *Locator {
 // Node targets an element by its DevTools backendNodeId.
 //
 // Use this when you already have a backendNodeId from a previous result
-// (e.g. [WaitResult] or [EvaluateResult]) and want to act on the exact same
+// (e.g. [WaitElement] or [EvaluateResult]) and want to act on the exact same
 // element without re-resolving by selector. Action-only — using it in
-// [CloudBrowser.Wait] returns an error at send time.
+// [Page.Wait] returns an error at send time.
 //
 // @param backendNodeId - DevTools backendNodeId of the target element
 //
@@ -93,8 +94,8 @@ func JS(expression string) *Locator {
 //
 // @example
 //
-//	res, _ := browser.Click(ctx, browserscale.CSS("button.open"))
-//	_, _ = browser.Click(ctx, browserscale.Node(res.BackendNodeId))
+//	res, _ := page.Click(ctx, browserscale.CSS("button.open"))
+//	_, _ = page.Click(ctx, browserscale.Node(res.BackendNodeId))
 func Node(backendNodeId int32) *Locator {
 	return &Locator{backendNodeId: backendNodeId}
 }
@@ -103,7 +104,7 @@ func Node(backendNodeId int32) *Locator {
 //
 // Useful for clicking inside a canvas, hovering decorative regions, or
 // dispatching events at synthetic positions. Action-only — using it in
-// [CloudBrowser.Wait] returns an error at send time. Note that only Click
+// [Page.Wait] returns an error at send time. Note that only Click
 // and MoveTo accept At; Scroll, Drag, Fill and Select all require a real
 // element.
 //
@@ -115,7 +116,7 @@ func Node(backendNodeId int32) *Locator {
 // @example
 //
 //	// Click at canvas-relative coordinates.
-//	_, _ = browser.Click(ctx, browserscale.At(120, 240))
+//	_, _ = page.Click(ctx, browserscale.At(120, 240))
 func At(x, y float64) *Locator {
 	return &Locator{x: &x, y: &y}
 }
@@ -135,7 +136,7 @@ func At(x, y float64) *Locator {
 //
 // @example
 //
-//	_, _ = browser.Wait(ctx, browserscale.CSS("#hidden").Visible(false))
+//	_, _ = page.Wait(ctx, browserscale.CSS("#hidden").Visible(false))
 func (l *Locator) Visible(v bool) *Locator { l.visible = &v; return l }
 
 // Steady requires the element to keep a stable position and size for at
@@ -151,12 +152,12 @@ func (l *Locator) Visible(v bool) *Locator { l.visible = &v; return l }
 //
 // @example
 //
-//	_, _ = browser.Wait(ctx, browserscale.CSS(".banner").Steady(0))
+//	_, _ = page.Wait(ctx, browserscale.CSS(".banner").Steady(0))
 func (l *Locator) Steady(ms float64) *Locator { l.steadyTime = &ms; return l }
 
 // InFrame scopes this Locator to a specific frameId.
 //
-// Use the frameId from a previous result or [CloudBrowser.GetPages] to
+// Use the frameId from a previous result or [CloudBrowser.Pages] to
 // target elements inside a known iframe.
 //
 // @param id - id of the frame to scope to
@@ -165,9 +166,9 @@ func (l *Locator) Steady(ms float64) *Locator { l.steadyTime = &ms; return l }
 //
 // @example
 //
-//	pages, _ := browser.GetPages(ctx)
+//	pages, _ := browser.Pages(ctx)
 //	iframeId := pages[0].FrameTree.Children[0].FrameId
-//	_, _ = browser.Click(ctx, browserscale.CSS("button").InFrame(iframeId))
+//	_, _ = pages[0].Page.Click(ctx, browserscale.CSS("button").InFrame(iframeId))
 func (l *Locator) InFrame(id string) *Locator { l.frameId = id; return l }
 
 // InAllFrames scopes this Locator to every frame.
@@ -180,7 +181,7 @@ func (l *Locator) InFrame(id string) *Locator { l.frameId = id; return l }
 //
 // @example
 //
-//	_, _ = browser.Wait(ctx, browserscale.CSS("button.consent").InAllFrames())
+//	_, _ = page.Wait(ctx, browserscale.CSS("button.consent").InAllFrames())
 func (l *Locator) InAllFrames() *Locator { l.frameId = "ALL_FRAMES"; return l }
 
 // validateTarget validates the locator for an element-action call.

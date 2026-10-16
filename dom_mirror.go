@@ -17,7 +17,7 @@ import (
 // ──────────────────────────────────────────────────────────────────────
 
 // DomNode is a node in the mirrored page, in CDP's DOM.Node shape — the same
-// shape [CloudBrowser.GetDOM] returns, with two additions the mirror needs and
+// shape [Page.GetDOM] returns, with two additions the mirror needs and
 // a caller usually wants anyway: DomNode.FrameId and DomNode.ContentFrameId.
 //
 // An <iframe> is an ordinary element here. The document it hosts is its one
@@ -103,7 +103,7 @@ type DomSnapshot struct {
 	Seq uint64
 }
 
-// DomChildren is the reply to [CloudBrowser.GetDomChildren].
+// DomChildren is the reply to [Page.GetDomChildren].
 type DomChildren struct {
 	// Children is a JSON array of DOM.Node. Empty for an id the mirror never
 	// handed out, which is also what a stale id from before a resync looks
@@ -113,7 +113,7 @@ type DomChildren struct {
 	Seq uint64
 }
 
-// DomPath is the reply to [CloudBrowser.RevealDomNode].
+// DomPath is the reply to [Page.RevealDomNode].
 type DomPath struct {
 	// Path is a JSON array of DOM.Node, the main document first, each carrying
 	// one level of children, crossing into frames at the document nodes along
@@ -123,8 +123,8 @@ type DomPath struct {
 	Seq uint64
 }
 
-// DomMirrorOptions configures [CloudBrowser.MirrorDom] and
-// [CloudBrowser.StartDomMirror].
+// DomMirrorOptions configures [Page.MirrorDom] and
+// [Page.StartDomMirror].
 type DomMirrorOptions struct {
 	// Depth is how many levels to serialize up front. 0 uses the server
 	// default of 2 — #document → <html> → <head>/<body>, enough to draw a
@@ -210,7 +210,7 @@ func (e *domEdit) target() int32 {
 }
 
 // DomMirror is a live copy of a page's DOM, across every frame in it, returned
-// by [CloudBrowser.MirrorDom].
+// by [Page.MirrorDom].
 //
 // The browser sends the top of the tree once and from then on only what changed
 // in the part you expanded, so a page that churns inside a collapsed subtree
@@ -226,7 +226,7 @@ func (e *domEdit) target() int32 {
 //
 // Every method is safe to call from any goroutine.
 type DomMirror struct {
-	browser  *CloudBrowser
+	page     *Page
 	stream   generated.Browser_StreamDomEventsClient
 	cancel   context.CancelFunc
 	options  DomMirrorOptions
@@ -282,16 +282,16 @@ type DomMirror struct {
 	err     error
 }
 
-// MirrorDom starts mirroring the session's page and returns a live copy of its
+// MirrorDom starts mirroring the page and returns a live copy of its
 // DOM.
 //
 // One mirror covers the whole page as ONE tree. An <iframe> is an ordinary
 // element whose single child is the document it hosts; expanding it fetches that
 // document and starts mirroring the frame, however deeply nested and whether or
-// not it is cross-origin. Unlike the inlining [CloudBrowser.GetDOM] does, these
+// not it is cross-origin. Unlike the inlining [Page.GetDOM] does, these
 // regions stay live — and frames nobody opened cost nothing.
 //
-// This replaces polling [CloudBrowser.GetDOMHash] and re-fetching GetDOM: the
+// This replaces polling [Page.GetDOMHash] and re-fetching GetDOM: the
 // browser reports changes to the part you actually expanded instead of
 // re-serializing the document so you can hash it.
 //
@@ -317,7 +317,7 @@ type DomMirror struct {
 //
 // @example
 //
-//	mirror, err := browser.MirrorDom(ctx, browserscale.DomMirrorOptions{Pierce: true},
+//	mirror, err := page.MirrorDom(ctx, browserscale.DomMirrorOptions{Pierce: true},
 //	    func(m *browserscale.DomMirror) {
 //	        render(m.Root())
 //	    }, nil)
@@ -328,13 +328,13 @@ type DomMirror struct {
 //
 //	body := mirror.Node(mirror.MainFrameId(), bodyId)
 //	_ = mirror.Expand(ctx, body, 0)
-func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onChange DomChangeHandler, onResync DomResyncHandler) (*DomMirror, error) {
+func (p *Page) MirrorDom(ctx context.Context, opts DomMirrorOptions, onChange DomChangeHandler, onResync DomResyncHandler) (*DomMirror, error) {
 	if onChange == nil {
 		return nil, errors.New("browserscale.MirrorDom: onChange must not be nil")
 	}
 	streamCtx, cancel := context.WithCancel(ctx)
-	stream, err := c.client.StreamDomEvents(streamCtx, &generated.StreamDomEventsRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+	stream, err := p.client.StreamDomEvents(streamCtx, &generated.StreamDomEventsRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 	})
 	if err != nil {
 		cancel()
@@ -351,7 +351,7 @@ func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onC
 	}
 
 	m := &DomMirror{
-		browser:    c,
+		page:       p,
 		stream:     stream,
 		cancel:     cancel,
 		options:    opts,
@@ -371,7 +371,7 @@ func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onC
 
 	// Snapshot only now: taken before the subscription exists, changes between
 	// the two would be lost with nothing to indicate it.
-	snapshot, err := c.StartDomMirror(ctx, opts)
+	snapshot, err := p.StartDomMirror(ctx, opts)
 	if err != nil {
 		cancel()
 		<-m.finished
@@ -389,7 +389,7 @@ func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onC
 }
 
 // StartDomMirror starts (or restarts) the page's mirror and returns the main
-// document, without subscribing to changes. [CloudBrowser.MirrorDom] is what
+// document, without subscribing to changes. [Page.MirrorDom] is what
 // you normally want; this is the raw command.
 //
 // Calling it again restarts the mirror, which is also the recovery path after a
@@ -406,16 +406,16 @@ func (c *CloudBrowser) MirrorDom(ctx context.Context, opts DomMirrorOptions, onC
 // that went away while the tree was being built. No mirror is left running
 //
 // @see [CommandError] for recovering the code with errors.As
-func (c *CloudBrowser) StartDomMirror(ctx context.Context, opts DomMirrorOptions) (*DomSnapshot, error) {
+func (p *Page) StartDomMirror(ctx context.Context, opts DomMirrorOptions) (*DomSnapshot, error) {
 	req := &generated.StartDomMirrorRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Depth: intPtr(opts.Depth),
 	}
 	if opts.Pierce {
 		pierce := true
 		req.Pierce = &pierce
 	}
-	resp, err := c.client.StartDomMirror(ctx, req)
+	resp, err := p.client.StartDomMirror(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -430,9 +430,9 @@ func (c *CloudBrowser) StartDomMirror(ctx context.Context, opts DomMirrorOptions
 // Reports only transport failures - a dead session, a page that is gone, a
 // broken connection. Stopping a mirror that is not running is a no-op rather
 // than a failure, so there are no error codes to branch on.
-func (c *CloudBrowser) StopDomMirror(ctx context.Context) error {
-	resp, err := c.client.StopDomMirror(ctx, &generated.StopDomMirrorRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) StopDomMirror(ctx context.Context) error {
+	resp, err := p.client.StopDomMirror(ctx, &generated.StopDomMirrorRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 	})
 	if err != nil {
 		return err
@@ -464,9 +464,9 @@ func (c *CloudBrowser) StopDomMirror(ctx context.Context) error {
 // result.
 //
 // @see [CommandError] for recovering the code with errors.As
-func (c *CloudBrowser) GetDomChildren(ctx context.Context, backendNodeId int32, frameId string, depth int32) (*DomChildren, error) {
-	resp, err := c.client.GetDomChildren(ctx, &generated.GetDomChildrenRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) GetDomChildren(ctx context.Context, backendNodeId int32, frameId string, depth int32) (*DomChildren, error) {
+	resp, err := p.client.GetDomChildren(ctx, &generated.GetDomChildrenRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 		Depth:         intPtr(depth),
@@ -494,9 +494,9 @@ func (c *CloudBrowser) GetDomChildren(ctx context.Context, backendNodeId int32, 
 // resynced looks like, so fetch the current tree and address the node again
 //
 // @see [CommandError] for recovering the code with errors.As
-func (c *CloudBrowser) ReleaseDomSubtree(ctx context.Context, backendNodeId int32, frameId string) error {
-	resp, err := c.client.ReleaseDomSubtree(ctx, &generated.ReleaseDomSubtreeRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) ReleaseDomSubtree(ctx context.Context, backendNodeId int32, frameId string) error {
+	resp, err := p.client.ReleaseDomSubtree(ctx, &generated.ReleaseDomSubtreeRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 	})
@@ -527,9 +527,9 @@ func (c *CloudBrowser) ReleaseDomSubtree(ctx context.Context, backendNodeId int3
 // result.
 //
 // @see [CommandError] for recovering the code with errors.As
-func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, frameId string) (*DomPath, error) {
-	resp, err := c.client.RevealDomNode(ctx, &generated.RevealDomNodeRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) RevealDomNode(ctx context.Context, backendNodeId int32, frameId string) (*DomPath, error) {
+	resp, err := p.client.RevealDomNode(ctx, &generated.RevealDomNodeRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		BackendNodeId: backendNodeId,
 		FrameId:       strPtr(frameId),
 	})
@@ -546,7 +546,7 @@ func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, f
 // change the document sees. O(1) in the browser and the change detector to poll
 // if you are not consuming mirror events.
 //
-// Prefer it over [CloudBrowser.GetDOMHash], which serializes the whole tree
+// Prefer it over [Page.GetDOMHash], which serializes the whole tree
 // just to hash it. The two answer different questions: a hash compares content,
 // a revision only says whether this document moved since you last asked. The
 // counter is meaningful only within the current document.
@@ -558,9 +558,9 @@ func (c *CloudBrowser) RevealDomNode(ctx context.Context, backendNodeId int32, f
 // Reports only transport failures - a dead session, a page that is gone, a
 // broken connection. This call has no semantic failure of its own, so there are
 // no error codes to branch on.
-func (c *CloudBrowser) GetDomRevision(ctx context.Context, frameId string) (uint64, error) {
-	resp, err := c.client.GetDomRevision(ctx, &generated.GetDomRevisionRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) GetDomRevision(ctx context.Context, frameId string) (uint64, error) {
+	resp, err := p.client.GetDomRevision(ctx, &generated.GetDomRevisionRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		FrameId: strPtr(frameId),
 	})
 	if err != nil {
@@ -686,7 +686,7 @@ func (m *DomMirror) Expand(ctx context.Context, node *DomNode, depth int32) erro
 	frame := node.FrameId
 	key := domKey(frame, node.BackendNodeId)
 
-	reply, err := m.browser.GetDomChildren(ctx, node.BackendNodeId, frame, depth)
+	reply, err := m.page.GetDomChildren(ctx, node.BackendNodeId, frame, depth)
 	if err != nil {
 		return err
 	}
@@ -737,7 +737,7 @@ func (m *DomMirror) Collapse(ctx context.Context, node *DomNode) error {
 		return nil
 	}
 	key := domKey(node.FrameId, node.BackendNodeId)
-	if err := m.browser.ReleaseDomSubtree(ctx, node.BackendNodeId, node.FrameId); err != nil {
+	if err := m.page.ReleaseDomSubtree(ctx, node.BackendNodeId, node.FrameId); err != nil {
 		return err
 	}
 
@@ -759,7 +759,7 @@ func (m *DomMirror) Collapse(ctx context.Context, node *DomNode) error {
 // Reveal brings a node into the tree together with its ancestors and their
 // siblings, and starts reporting changes along that path.
 //
-// Use it to focus a node you do not hold — an [CloudBrowser.InspectAtPosition]
+// Use it to focus a node you do not hold — an [Page.InspectAtPosition]
 // hit, say. You cannot walk up to it yourself: it is not in your tree, so there
 // is nothing to walk from.
 //
@@ -791,7 +791,7 @@ func (m *DomMirror) Reveal(ctx context.Context, backendNodeId int32, frameId str
 	if frame == "" {
 		frame = m.MainFrameId()
 	}
-	reply, err := m.browser.RevealDomNode(ctx, backendNodeId, frame)
+	reply, err := m.page.RevealDomNode(ctx, backendNodeId, frame)
 	if err != nil {
 		return nil, err
 	}
@@ -880,7 +880,7 @@ func (m *DomMirror) Wait() error {
 // Once it returns, the change handler is no longer running and everything it
 // wrote is visible to the calling goroutine.
 //
-// To stop from inside the handler, call [CloudBrowser.StopDomMirror] instead:
+// To stop from inside the handler, call [Page.StopDomMirror] instead:
 // Stop waits for the handler to return, so calling it from there would wait on
 // itself until ctx expires.
 //
@@ -901,7 +901,7 @@ func (m *DomMirror) Stop(ctx context.Context) error {
 	m.stopped = true
 	m.mu.Unlock()
 
-	err := m.browser.StopDomMirror(ctx)
+	err := m.page.StopDomMirror(ctx)
 	m.cancel()
 	select {
 	case <-m.finished:
@@ -1240,7 +1240,7 @@ func (m *DomMirror) resync(ctx context.Context, reason string) error {
 				return ctx.Err()
 			}
 		}
-		s, err := m.browser.StartDomMirror(ctx, opts)
+		s, err := m.page.StartDomMirror(ctx, opts)
 		if err == nil {
 			snapshot = s
 			break

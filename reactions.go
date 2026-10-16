@@ -8,8 +8,8 @@ import (
 )
 
 // ReactionInfo describes a still-pending reaction, as returned by
-// [CloudBrowser.ListReactions]. One-shot reactions that have already fired are
-// gone and never appear here.
+// [Page.ListReactions] and [CloudBrowser.ListReactions]. One-shot reactions
+// that have already fired are gone and never appear here.
 type ReactionInfo struct {
 	// ReactionID is the stable id assigned by AddReaction (pass to RemoveReaction).
 	ReactionID string
@@ -26,9 +26,13 @@ type ReactionInfo struct {
 	FrameID string
 	// Visible reports whether the match additionally requires visibility.
 	Visible bool
+	// AllPages reports whether the reaction was registered for every page
+	// ([CloudBrowser.AddReaction]) rather than for one.
+	AllPages bool
 }
 
-// ReactionOpts customizes [CloudBrowser.AddReactionWith].
+// ReactionOpts customizes [Page.AddReactionWith] and
+// [CloudBrowser.AddReactionWith].
 // Zero/empty values mean "use the server default".
 type ReactionOpts struct {
 	// On overrides the click target. Nil = click the matched element itself.
@@ -52,13 +56,17 @@ type ReactionOpts struct {
 
 // AddReaction registers a one-shot "reaction": the browser watches for the match
 // locator in the background and, as soon as it matches, clicks it the same way
-// [CloudBrowser.Click] does (scroll, human path, occlusion check) — then removes
-// itself. The reaction yields to any in-flight input
-// action and only fires while the pointer is idle, so a reaction naturally
-// slots into the gaps of a retrying foreground action (e.g. it dismisses a
-// newsletter modal blocking a [CloudBrowser.Click], after which the click's own
-// retry succeeds). Reactions are scoped to the page and torn down automatically
-// when the page/session ends.
+// [Page.Click] does (scroll, human path, occlusion check) — then removes
+// itself. When it fires, the input action you are running pauses at a safe
+// point (a click before it presses, a fill between two keys), the reaction
+// clicks, and the action carries on within its own timeout — e.g. it
+// dismisses a newsletter modal blocking a [Page.Click], and the click then
+// lands. A captcha solve takes the page first, a button held down by a
+// press-only click keeps reactions out until its release, and a reaction
+// waits for its page to have the focus. A reaction added here belongs to this
+// page and is torn down automatically when the page/session ends; use
+// [CloudBrowser.AddReaction] for one that covers every page. Each click is
+// reported as a [ContextEventReactionFired] on [CloudBrowser.ContextEvents].
 //
 // match must be a CSS or JS [Locator] — [Node] and [At] are rejected. Use
 // [Locator.InAllFrames] to watch every frame and [Locator.Visible](false) to
@@ -66,12 +74,63 @@ type ReactionOpts struct {
 //
 // @param match - the CSS/JS locator to watch for
 //
-// @returns the reactionId (pass to [CloudBrowser.RemoveReaction])
+// @returns the reactionId (pass to [Page.RemoveReaction])
 //
 // A match that is nil, carries neither a selector nor a JS expression, or is a
 // Node/At locator is rejected before anything is sent. Beyond that, reports only
 // transport failures: registering a reaction has no semantic failure of its own,
 // and says nothing about whether the element it watches ever appears.
+//
+// @see [Page.AddReactionWith] for a different click target, button,
+//
+//	double-click or poll cadence
+//
+// @example
+//
+//	// Auto-dismiss a consent button whenever it appears, in any frame.
+//	id, err := page.AddReaction(ctx, browserscale.CSS("button#accept").InAllFrames())
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	_ = id
+func (p *Page) AddReaction(ctx context.Context, match *Locator) (string, error) {
+	return addReaction(ctx, p.client, p.sessionId, p.apiKey, p.id, match, ReactionOpts{})
+}
+
+// AddReactionWith is the customizable variant of [Page.AddReaction].
+//
+// @inheritDoc [Page.AddReaction]
+// @param opts - reaction customization; see [ReactionOpts]
+//
+// @example
+//
+//	// Watch for a newsletter modal, but click its close "X" instead.
+//	id, err := page.AddReactionWith(ctx,
+//	    browserscale.CSS("#newsletter-modal"),
+//	    browserscale.ReactionOpts{On: browserscale.CSS(".modal-close")},
+//	)
+func (p *Page) AddReactionWith(ctx context.Context, match *Locator, opts ReactionOpts) (string, error) {
+	return addReaction(ctx, p.client, p.sessionId, p.apiKey, p.id, match, opts)
+}
+
+// AddReaction registers a one-shot reaction for every page of the browser:
+// it is armed on the pages open now and on every page that opens later —
+// tabs, popups, pages you create — and fires once on each. Use it for the
+// interruptions a site shows wherever you are on it, such as a consent
+// banner. Otherwise it behaves exactly like [Page.AddReaction].
+//
+// The reaction stays registered until you remove it or the session ends;
+// [CloudBrowser.ListReactions] lists it, and [Page.ListReactions] lists it on
+// each page where it has not fired yet. Every click is reported as a
+// [ContextEventReactionFired], carrying the page it fired on.
+//
+// @param match - the CSS/JS locator to watch for
+//
+// @returns the reactionId (pass to [CloudBrowser.RemoveReaction])
+//
+// A match that is nil, carries neither a selector nor a JS expression, or is a
+// Node/At locator is rejected before anything is sent. Beyond that, reports only
+// transport failures.
 //
 // @see [CloudBrowser.AddReactionWith] for a different click target, button,
 //
@@ -79,14 +138,14 @@ type ReactionOpts struct {
 //
 // @example
 //
-//	// Auto-dismiss a consent button whenever it appears, in any frame.
+//	// Accept the consent banner on whichever page it shows up.
 //	id, err := browser.AddReaction(ctx, browserscale.CSS("button#accept").InAllFrames())
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	_ = id
 func (c *CloudBrowser) AddReaction(ctx context.Context, match *Locator) (string, error) {
-	return c.addReactionWith(ctx, match, ReactionOpts{})
+	return addReaction(ctx, c.client, c.sessionId, c.apiKey, "", match, ReactionOpts{})
 }
 
 // AddReactionWith is the customizable variant of [CloudBrowser.AddReaction].
@@ -96,23 +155,25 @@ func (c *CloudBrowser) AddReaction(ctx context.Context, match *Locator) (string,
 //
 // @example
 //
-//	// Watch for a newsletter modal, but click its close "X" instead.
+//	// Close the newsletter modal on every page that opens it.
 //	id, err := browser.AddReactionWith(ctx,
 //	    browserscale.CSS("#newsletter-modal"),
 //	    browserscale.ReactionOpts{On: browserscale.CSS(".modal-close")},
 //	)
 func (c *CloudBrowser) AddReactionWith(ctx context.Context, match *Locator, opts ReactionOpts) (string, error) {
-	return c.addReactionWith(ctx, match, opts)
+	return addReaction(ctx, c.client, c.sessionId, c.apiKey, "", match, opts)
 }
 
-func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o ReactionOpts) (string, error) {
+// addReaction registers a reaction on pageID, or on every page if it is "".
+func addReaction(ctx context.Context, client generated.BrowserClient, sessionID, apiKey, pageID string, match *Locator, o ReactionOpts) (string, error) {
 	if err := validateReactionMatch("AddReaction", match); err != nil {
 		return "", err
 	}
 
 	req := &generated.AddReactionRequest{
-		SessionId:         c.sessionId,
-		ApiKey:            c.apiKey,
+		SessionId:         sessionID,
+		PageId:            pageID,
+		ApiKey:            apiKey,
 		MatchSelector:     strPtr(match.selector),
 		MatchJsExpression: strPtr(match.jsExpression),
 		FrameId:           pickFrame("", match),
@@ -129,7 +190,7 @@ func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o Re
 		req.ActionJsExpression = strPtr(o.On.jsExpression)
 	}
 
-	resp, err := c.client.AddReaction(ctx, req)
+	resp, err := client.AddReaction(ctx, req)
 	if err != nil {
 		return "", err
 	}
@@ -140,9 +201,11 @@ func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o Re
 }
 
 // RemoveReaction removes a pending reaction by id. It returns false if the
-// reaction had already fired (one-shot) or was never registered.
+// reaction had already fired (one-shot) or was never registered. An id from
+// [CloudBrowser.AddReaction] is removed from every page; it is the same call
+// as [CloudBrowser.RemoveReaction].
 //
-// @param reactionID - id returned by [CloudBrowser.AddReaction]
+// @param reactionID - id returned by [Page.AddReaction]
 //
 // @returns true if a pending reaction with this id existed and was removed
 //
@@ -152,11 +215,34 @@ func (c *CloudBrowser) addReactionWith(ctx context.Context, match *Locator, o Re
 //
 // @example
 //
+//	removed, err := page.RemoveReaction(ctx, id)
+func (p *Page) RemoveReaction(ctx context.Context, reactionID string) (bool, error) {
+	return removeReaction(ctx, p.client, p.sessionId, p.apiKey, reactionID)
+}
+
+// RemoveReaction removes a reaction by id, wherever it is pending: a
+// reaction from [CloudBrowser.AddReaction] stops for every page, including
+// the ones that open later. It returns false if no reaction with this id was
+// pending anywhere.
+//
+// @param reactionID - id returned by [CloudBrowser.AddReaction] or [Page.AddReaction]
+//
+// @returns true if a pending reaction with this id existed and was removed
+//
+// Removing an id that is not registered is a no-op rather than an error.
+// Reports only transport failures.
+//
+// @example
+//
 //	removed, err := browser.RemoveReaction(ctx, id)
 func (c *CloudBrowser) RemoveReaction(ctx context.Context, reactionID string) (bool, error) {
-	resp, err := c.client.RemoveReaction(ctx, &generated.RemoveReactionRequest{
-		SessionId:  c.sessionId,
-		ApiKey:     c.apiKey,
+	return removeReaction(ctx, c.client, c.sessionId, c.apiKey, reactionID)
+}
+
+func removeReaction(ctx context.Context, client generated.BrowserClient, sessionID, apiKey, reactionID string) (bool, error) {
+	resp, err := client.RemoveReaction(ctx, &generated.RemoveReactionRequest{
+		SessionId:  sessionID,
+		ApiKey:     apiKey,
 		ReactionId: reactionID,
 	})
 	if err != nil {
@@ -168,8 +254,10 @@ func (c *CloudBrowser) RemoveReaction(ctx context.Context, reactionID string) (b
 	return resp.Removed, nil
 }
 
-// ListReactions returns the still-pending reactions registered for the current
-// page. Reactions that have already fired (one-shot) are not included.
+// ListReactions returns the reactions still pending on the current page,
+// including those from [CloudBrowser.AddReaction] that have not fired here
+// yet ([ReactionInfo.AllPages] is set on those). Reactions that have already
+// fired on this page are not included.
 //
 // @returns the pending reactions for the page
 //
@@ -179,14 +267,41 @@ func (c *CloudBrowser) RemoveReaction(ctx context.Context, reactionID string) (b
 //
 // @example
 //
-//	pending, err := browser.ListReactions(ctx)
+//	pending, err := page.ListReactions(ctx)
 //	for _, r := range pending {
 //	    log.Printf("reaction %s watching %s%s", r.ReactionID, r.MatchSelector, r.MatchJsExpression)
 //	}
+func (p *Page) ListReactions(ctx context.Context) ([]ReactionInfo, error) {
+	return listReactions(ctx, p.client, p.sessionId, p.apiKey, p.id)
+}
+
+// ListReactions returns the reactions registered with
+// [CloudBrowser.AddReaction] that have not been removed. Each stays listed
+// while it fires on page after page; [Page.ListReactions] shows where it is
+// still pending.
+//
+// @returns the reactions registered for every page
+//
+// Reports only transport failures. This call has no semantic failure of its
+// own, so there are no error codes to branch on.
+//
+// @example
+//
+//	all, err := browser.ListReactions(ctx)
+//	for _, r := range all {
+//	    log.Printf("browser-wide reaction %s", r.ReactionID)
+//	}
 func (c *CloudBrowser) ListReactions(ctx context.Context) ([]ReactionInfo, error) {
-	resp, err := c.client.ListReactions(ctx, &generated.ListReactionsRequest{
-		SessionId: c.sessionId,
-		ApiKey:    c.apiKey,
+	return listReactions(ctx, c.client, c.sessionId, c.apiKey, "")
+}
+
+// listReactions lists pageID's pending reactions, or the browser-wide ones if
+// it is "".
+func listReactions(ctx context.Context, client generated.BrowserClient, sessionID, apiKey, pageID string) ([]ReactionInfo, error) {
+	resp, err := client.ListReactions(ctx, &generated.ListReactionsRequest{
+		SessionId: sessionID,
+		PageId:    pageID,
+		ApiKey:    apiKey,
 	})
 	if err != nil {
 		return nil, err
@@ -204,6 +319,7 @@ func (c *CloudBrowser) ListReactions(ctx context.Context) ([]ReactionInfo, error
 			ActionJsExpression: r.GetActionJsExpression(),
 			FrameID:            r.GetFrameId(),
 			Visible:            r.GetVisible(),
+			AllPages:           r.GetAllPages(),
 		})
 	}
 	return out, nil

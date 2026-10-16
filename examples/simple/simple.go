@@ -28,25 +28,32 @@ func main() {
 
 	fmt.Println("session:", browser.SessionId())
 
-	if _, err := browser.Navigate(ctx, "https://example.com", 30000); err != nil {
+	page, err := browser.CreatePage(ctx)
+	if err != nil {
+		fmt.Println("create page:", err)
+		return
+	}
+
+	if _, err := page.Navigate(ctx, "https://example.com", 30000); err != nil {
 		fmt.Println("navigate:", err)
 		return
 	}
 
-	wr, err := browser.Wait(ctx, browserscale.CSS(`a[href="https://iana.org/domains/example"]`))
+	wr, err := page.Wait(ctx, browserscale.CSS(`a[href="https://iana.org/domains/example"]`))
 	if err != nil {
 		fmt.Println("wait:", err)
 		return
 	}
+	el := wr.Element
 	fmt.Printf("wait matched index=%d frame=%s node=%d visible=%v bounds=%v\n",
-		wr.Index, wr.FrameId, wr.BackendNodeId, wr.IsVisible, wr.Bounds)
+		wr.Index, el.FrameId, el.BackendNodeId, el.IsVisible, el.Bounds)
 
-	if _, err := browser.Click(ctx, browserscale.Node(wr.BackendNodeId).InFrame(wr.FrameId)); err != nil {
+	if _, err := page.Click(ctx, browserscale.Node(el.BackendNodeId).InFrame(el.FrameId)); err != nil {
 		fmt.Println("click:", err)
 		return
 	}
 
-	if _, err := browser.Wait(ctx, browserscale.CSS(`.help-article`)); err != nil {
+	if _, err := page.Wait(ctx, browserscale.CSS(`.help-article`)); err != nil {
 		fmt.Println("wait:", err)
 		return
 	}

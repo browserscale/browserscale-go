@@ -21,14 +21,28 @@ type FrameInfo struct {
 	Children     []*FrameInfo
 }
 
-// PageInfo describes an open page (tab or popup) inside a browser context.
+// PageInfo describes an open page (tab or popup) inside a browser context, as
+// [CloudBrowser.Pages] found it.
 type PageInfo struct {
-	PageId           string
+	// Page is the handle to act on the page.
+	Page             *Page
 	BrowserContextId string
 	Url              string
 	Title            string
 	Viewport         Rect
 	FrameTree        FrameInfo
+	// IsFocused is whether this is the page that has the focus; exactly one
+	// page has it. See [CloudBrowser.FocusedPage].
+	IsFocused bool
+	// IsPopup is whether the page is a popup window (window.open with window
+	// features) rather than a tab.
+	IsPopup bool
+	// Opener is the page that opened this one, if it is still open. Also set
+	// for rel=noopener, since the page still came from it.
+	Opener *Page
+	// OpenerFrameId is the frame that opened this page, which may be a frame
+	// of Opener other than its main frame.
+	OpenerFrameId string
 }
 
 // SessionUsage is what a session's browser has consumed since the session
@@ -82,8 +96,8 @@ type Header struct {
 	Value string
 }
 
-// InterceptedRequest describes an outgoing request captured by
-// [CloudBrowser.WaitForAnyRequest].
+// InterceptedRequest describes an outgoing request captured by a
+// [Request] wait condition or [CloudBrowser.WaitForAnyRequest].
 type InterceptedRequest struct {
 	Method       string
 	Url          string
@@ -92,8 +106,8 @@ type InterceptedRequest struct {
 	ResourceType string
 }
 
-// InterceptedResponse describes a network response captured by
-// [CloudBrowser.WaitForAnyResponse].
+// InterceptedResponse describes a network response captured by a
+// [Response] wait condition or [CloudBrowser.WaitForAnyResponse].
 type InterceptedResponse struct {
 	Url        string
 	StatusCode int32
@@ -209,26 +223,61 @@ type NetworkExchange struct {
 	Error string
 }
 
-// WaitResult is the outcome of a [CloudBrowser.Wait] / [CloudBrowser.WaitForAny]
-// call: which condition matched (Index, in argument order) and where the
-// matched element lives.
+// WaitKind says what kind of condition matched a [Page.Wait].
+type WaitKind string
+
+const (
+	// WaitKindElement: a [CSS] or [JS] condition matched; see WaitResult.Element.
+	WaitKindElement WaitKind = "element"
+	// WaitKindCaptcha: a [Captcha] condition matched. It carries no payload —
+	// solve it with [Page.SolveCaptcha].
+	WaitKindCaptcha WaitKind = "captcha"
+	// WaitKindRequest: a [Request] condition matched; see WaitResult.Request.
+	WaitKindRequest WaitKind = "request"
+	// WaitKindResponse: a [Response] condition matched; see WaitResult.Response.
+	WaitKindResponse WaitKind = "response"
+)
+
+// WaitResult is the outcome of a [Page.Wait] call: which condition matched
+// (Index, in argument order), what kind it was, and what it matched.
+//
+// Exactly one of Element, Request and Response is set, according to Kind; a
+// captcha match sets none of them. On a timeout, Index is -1, Kind is empty
+// and the error is a [*WaitError].
 type WaitResult struct {
-	Index         int32
-	FrameId       string
+	Index int32
+	Kind  WaitKind
+	// Element is the matched element, set iff Kind is [WaitKindElement].
+	Element *WaitElement
+	// Request is the matched request, set iff Kind is [WaitKindRequest].
+	Request *InterceptedRequest
+	// Response is the matched response, set iff Kind is [WaitKindResponse].
+	Response *InterceptedResponse
+}
+
+// WaitElement is the element a [CSS] or [JS] wait condition matched.
+type WaitElement struct {
+	// FrameId is the frame the element lives in.
+	FrameId string
+	// BackendNodeId addresses the element in later calls via [Node]; 0 when a
+	// JS expression matched with a truthy non-Element value.
 	BackendNodeId int32
-	IsVisible     bool
-	Bounds        Rect
+	// IsVisible reports whether the element was visible at the match.
+	IsVisible bool
+	// Bounds is the element's rect in root-viewport CSS pixels.
+	Bounds Rect
 }
 
 // WaitConditionStatus is the per-condition diagnostic carried by [WaitError]
-// when a [CloudBrowser.Wait] times out: one entry per condition (in the order
+// when a [Page.Wait] times out: one entry per condition (in the order
 // they were passed) explaining why it never matched.
 type WaitConditionStatus struct {
 	// Index into the condition list this entry describes.
 	Index int32
 	// State is the last observed state: "not_found", "found_hidden",
-	// "found_occluded" (only when the condition required visibility), or
-	// "pending_steady".
+	// "found_occluded" (only when the condition required visibility),
+	// "pending_steady", or "not_seen" for a [Request] / [Response] condition
+	// that never saw a matching request.
 	State string
 	// BackendNodeId last seen for this condition (0 if never found).
 	BackendNodeId int32
@@ -244,12 +293,12 @@ type WaitConditionStatus struct {
 	Occluder *OccluderInfo
 }
 
-// WaitError is returned as the error from [CloudBrowser.Wait] when no condition
+// WaitError is returned as the error from [Page.Wait] when no condition
 // matched before the deadline. It implements the error interface, so the
-// ordinary `res, err := browser.Wait(...)` shape keeps working; recover the
+// ordinary `res, err := page.Wait(...)` shape keeps working; recover the
 // structured detail (including the per-condition breakdown) with errors.As:
 //
-//	res, err := browser.Wait(ctx, browserscale.CSS(".ready"))
+//	res, err := page.Wait(ctx, browserscale.CSS(".ready"))
 //	var we *browserscale.WaitError
 //	if errors.As(err, &we) {
 //	    for _, c := range we.Conditions {
@@ -277,7 +326,7 @@ func (e *WaitError) Error() string {
 	return "wait failed: " + e.Code
 }
 
-// NavigateResult reports where a [CloudBrowser.Navigate] call ended up
+// NavigateResult reports where a [Page.Navigate] call ended up
 // after redirects.
 type NavigateResult struct {
 	FrameId string
@@ -303,7 +352,7 @@ type EvaluateResult struct {
 }
 
 // ElementResult is the outcome of an element interaction such as
-// [CloudBrowser.Click], [CloudBrowser.Fill] or [CloudBrowser.ScrollTo]:
+// [Page.Click], [Page.Fill] or [Page.ScrollTo]:
 // the resolved element plus the root-relative coordinates the action
 // was performed at.
 type ElementResult struct {
@@ -314,6 +363,29 @@ type ElementResult struct {
 	Bounds        Rect
 	RootX         float64
 	RootY         float64
+	// Captchas lists the captcha solves that held a [Page.Click] or
+	// [Page.Fill] while it ran, in order (see
+	// [CloudBrowser.EnableCaptchaAutoSolve]). Nil if none did, and always nil
+	// for the other actions.
+	Captchas []CaptchaInterruption
+}
+
+// CaptchaInterruption is a captcha solve that held an action while it ran.
+// Listed under Captchas in the action's result.
+type CaptchaInterruption struct {
+	// SolveId is the solve's id, as in the [ContextEventCaptchaDetected] and
+	// [ContextEventCaptchaResolved] events.
+	SolveId string
+	// Success reports whether the challenge was solved.
+	Success bool
+	// DurationMs is how long the action was held, in milliseconds.
+	DurationMs float64
+	// Outcome is what the action did after the solve: "resumed" (it carried on
+	// in the same document), "restarted" (the solve replaced the document, so
+	// it started over), "continued" (the solve failed and the action carried
+	// on anyway, see [CaptchaAutoSolveOpts].OnFailure) or "failed" (the solve
+	// failed and the action ended with code "captcha_failed").
+	Outcome string
 }
 
 // OccluderInfo describes the element that intercepted a click — the element
@@ -363,7 +435,7 @@ type OccluderInfo struct {
 // keeps working and res stays readable alongside it. Recover the code with
 // errors.As:
 //
-//	res, err := browser.Evaluate(ctx, "document.title.toUpperCase()")
+//	res, err := page.Evaluate(ctx, "document.title.toUpperCase()")
 //	var ce *browserscale.CommandError
 //	if errors.As(err, &ce) && ce.Code == "threw" {
 //	    // the expression itself is broken; ce.Message has the exception text
@@ -400,21 +472,23 @@ func (e *CommandError) Error() string {
 	return verb + " failed: " + e.Code
 }
 
-// ClickError is returned as the error from [CloudBrowser.Click] /
-// [CloudBrowser.ClickWith] when the click did not land (the element was
+// ClickError is returned as the error from [Page.Click] /
+// [Page.ClickWith] when the click did not land (the element was
 // occluded and the point could not be reached). It implements the error
-// interface, so the ordinary `res, err := browser.Click(...)` shape keeps
+// interface, so the ordinary `res, err := page.Click(...)` shape keeps
 // working; recover the structured detail with errors.As:
 //
-//	res, err := browser.Click(ctx, browserscale.CSS("#buy"))
+//	res, err := page.Click(ctx, browserscale.CSS("#buy"))
 //	var ce *browserscale.ClickError
 //	if errors.As(err, &ce) {
 //	    // ce.Code, ce.Message, ce.Occluder describe the blocker
 //	}
 type ClickError struct {
 	// Code is a machine-stable failure code, e.g. "occluded_no_reachable_point"
-	// (target fully covered, no exposed part reachable) or "occluded_after_evade"
-	// (a reposition was tried but the target was still covered).
+	// (target fully covered, no exposed part reachable), "occluded_after_evade"
+	// (a reposition was tried but the target was still covered) or
+	// "captcha_failed" (a captcha held the click and could not be solved, see
+	// [CloudBrowser.EnableCaptchaAutoSolve]).
 	Code string
 	// Message is a human-readable description.
 	Message string
@@ -423,6 +497,9 @@ type ClickError struct {
 	// EvadeAttempted reports whether a pointer reposition was tried before
 	// giving up.
 	EvadeAttempted bool
+	// FocusedPageId is, for Code "page_not_focused", the page that has the
+	// focus. The call returns a [PageNotFocusedError] around this error then.
+	FocusedPageId string
 }
 
 // Error implements the error interface.
@@ -436,15 +513,15 @@ func (e *ClickError) Error() string {
 	return "click failed: " + e.Code
 }
 
-// FillError is returned as the error from [CloudBrowser.Fill] /
-// [CloudBrowser.FillWith] when the field could not be focused/typed. Fill
-// focuses the field with the exact same smart click as [CloudBrowser.Click], so
+// FillError is returned as the error from [Page.Fill] /
+// [Page.FillWith] when the field could not be focused/typed. Fill
+// focuses the field with the exact same smart click as [Page.Click], so
 // a pre-typing failure is a click failure: Code/Message mirror it and the full
 // click diagnostics live under ClickError. It implements the error interface,
-// so the ordinary `res, err := browser.Fill(...)` shape keeps working; recover
+// so the ordinary `res, err := page.Fill(...)` shape keeps working; recover
 // the detail with errors.As:
 //
-//	res, err := browser.Fill(ctx, browserscale.CSS("#email"), "a@b.com")
+//	res, err := page.Fill(ctx, browserscale.CSS("#email"), "a@b.com")
 //	var fe *browserscale.FillError
 //	if errors.As(err, &fe) && fe.ClickError != nil {
 //	    // fe.ClickError.Occluder describes the blocker
@@ -457,6 +534,8 @@ type FillError struct {
 	// Fill is strictly target-bound and will not type into the thief) and
 	// "focus_lost" (focus left the target and nothing is focused). For
 	// untargeted stream typing that lets focus move (e.g. OTP), use Type.
+	// "captcha_failed": a captcha held the fill and could not be solved (see
+	// [CloudBrowser.EnableCaptchaAutoSolve]).
 	Code string
 	// Message is a human-readable description (mirrors ClickError.Message).
 	Message string
@@ -513,12 +592,14 @@ func (e *FillError) Error() string {
 
 // DragError is returned as the error from [CloudBrowser.Drag] variants when the
 // source element could not be acquired/pressed. Drag picks up the source with
-// the same smart click as [CloudBrowser.Click], so a pre-drag failure is a
+// the same smart click as [Page.Click], so a pre-drag failure is a
 // click failure: Code/Message mirror it and the full click diagnostics live
 // under ClickError. Implements the error interface; recover with errors.As.
 type DragError struct {
 	// Code is mirrored from the underlying click failure: "not_found",
-	// "occluded_no_reachable_point" or "occluded_after_evade".
+	// "occluded_no_reachable_point" or "occluded_after_evade". Or
+	// "captcha_failed": a captcha held the drag and could not be solved (see
+	// [CloudBrowser.EnableCaptchaAutoSolve]).
 	Code string
 	// Message is a human-readable description (mirrors ClickError.Message).
 	Message string
@@ -560,7 +641,7 @@ func (e *SelectOptionError) Error() string {
 	return "selectOption failed: " + e.Code
 }
 
-// ScrollError is returned as the error from [CloudBrowser.ScrollTo] when the
+// ScrollError is returned as the error from [Page.ScrollTo] when the
 // target could not be located/scrolled. Implements the error interface; recover
 // with errors.As.
 type ScrollError struct {
@@ -581,14 +662,17 @@ func (e *ScrollError) Error() string {
 	return "scrollTo failed: " + e.Code
 }
 
-// MoveError is returned as the error from [CloudBrowser.MoveTo] when the target
+// MoveError is returned as the error from [Page.MoveTo] when the target
 // could not be located. A move has no occlusion notion, so this is the only
 // semantic failure. Implements the error interface; recover with errors.As.
 type MoveError struct {
-	// Code is currently always "not_found".
+	// Code is "not_found" or "page_not_focused".
 	Code string
 	// Message is a human-readable description.
 	Message string
+	// FocusedPageId is, for Code "page_not_focused", the page that has the
+	// focus. The call returns a [PageNotFocusedError] around this error then.
+	FocusedPageId string
 }
 
 // Error implements the error interface.
@@ -612,6 +696,9 @@ type DragResult struct {
 	StartY        float64
 	EndX          float64
 	EndY          float64
+	// Captchas lists the captcha solves that held the drag, in order. Nil if
+	// none did.
+	Captchas []CaptchaInterruption
 }
 
 // SelectOptionResult reports which <option> a SelectByXxx call ended up
@@ -623,7 +710,7 @@ type SelectOptionResult struct {
 	SelectedText  string
 }
 
-// ObservationOpts customizes a [CloudBrowser.GetObservationWith] call.
+// ObservationOpts customizes a [Page.GetObservationWith] call.
 // Zero/empty values mean "use the server default".
 type ObservationOpts struct {
 	// Format is "text" (default) for the compact line format meant to be handed
@@ -669,7 +756,7 @@ type ObservationOpts struct {
 }
 
 // ScreenshotResult is a single captured image of the page, returned by
-// [CloudBrowser.Screenshot]. DataBase64 holds the encoded image bytes
+// [Page.Screenshot]. DataBase64 holds the encoded image bytes
 // (PNG by default); Width and Height are in physical pixels.
 type ScreenshotResult struct {
 	DataBase64 string
@@ -678,7 +765,7 @@ type ScreenshotResult struct {
 }
 
 // ReadCanvasResult is the pixel readback of a <canvas>, returned by
-// [CloudBrowser.ReadCanvas]. DataBase64 holds the encoded image bytes (PNG by
+// [Page.ReadCanvas]. DataBase64 holds the encoded image bytes (PNG by
 // default) or the raw RGBA buffer when Opts.Format == "rgba". OriginClean
 // reports whether the canvas was untainted (informational; the read succeeds
 // either way).

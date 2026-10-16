@@ -20,7 +20,7 @@ type ScriptLogEntry struct {
 	Timestamp time.Time
 }
 
-// ScriptResult is the outcome of a blocking [CloudBrowser.RunScript].
+// ScriptResult is the outcome of a blocking [Page.RunScript].
 type ScriptResult struct {
 	// Success is false when the script failed to compile or threw; Result then
 	// holds the message.
@@ -51,7 +51,7 @@ type ScriptFinished struct {
 }
 
 // ScriptRunInfo is one run still in flight, as
-// [CloudBrowser.ListScriptRuns] reports it.
+// [Page.ListScriptRuns] reports it.
 type ScriptRunInfo struct {
 	RunId string
 	// Running is how long the run has been going.
@@ -80,7 +80,7 @@ type ScriptEvent struct {
 // slow work to another goroutine.
 type ScriptEventHandler func(ScriptEvent)
 
-// RunScript runs source in the session's browser and waits for it to finish.
+// RunScript runs source on the page and waits for it to finish.
 //
 // The script runs beside the browser, in a V8 isolate of its own rather than in
 // the page, and reaches the document through the engine: a cross-origin iframe
@@ -93,9 +93,9 @@ type ScriptEventHandler func(ScriptEvent)
 //
 // This blocks for as long as the script runs, and cannot be bounded: the run id
 // needed to cancel only arrives with the reply. Cancelling ctx abandons the wait
-// but not the run. Use [CloudBrowser.StartScript] when the script may outlive
-// the caller's patience, or [CloudBrowser.StopScripts] to abandon what this
-// session is running.
+// but not the run. Use [Page.StartScript] when the script may outlive
+// the caller's patience, or [Page.StopScripts] to abandon what is
+// running on the page.
 //
 // @param source - JavaScript to execute; its return value comes back as JSON
 //
@@ -109,7 +109,7 @@ type ScriptEventHandler func(ScriptEvent)
 //
 // @example
 //
-//	result, err := browser.RunScript(ctx, `
+//	result, err := page.RunScript(ctx, `
 //	    await browser.navigate("https://example.com");
 //	    const items = [];
 //	    for (const el of await browser.getDOM().querySelectorAll("h1")) {
@@ -121,9 +121,9 @@ type ScriptEventHandler func(ScriptEvent)
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(result.Success, result.Result)
-func (c *CloudBrowser) RunScript(ctx context.Context, source string) (*ScriptResult, error) {
-	resp, err := c.client.RunScript(ctx, &generated.RunScriptRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) RunScript(ctx context.Context, source string) (*ScriptResult, error) {
+	resp, err := p.client.RunScript(ctx, &generated.RunScriptRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Source: source,
 	})
 	if err != nil {
@@ -139,10 +139,10 @@ func (c *CloudBrowser) RunScript(ctx context.Context, source string) (*ScriptRes
 }
 
 // ScriptRun is a script running in the background, returned by
-// [CloudBrowser.StartScript]. Its output is delivered to the handler passed
+// [Page.StartScript]. Its output is delivered to the handler passed
 // there; this handle exists to wait for the outcome and to cancel the run.
 type ScriptRun struct {
-	browser *CloudBrowser
+	page    *Page
 	stream  generated.Browser_StreamScriptEventsClient
 	cancel  context.CancelFunc
 	handler ScriptEventHandler
@@ -161,10 +161,10 @@ type ScriptRun struct {
 	outcome *ScriptFinished
 }
 
-// StartScript launches source in the session's browser and returns as soon as
+// StartScript launches source on the page and returns as soon as
 // the run is under way.
 //
-// The counterpart to [CloudBrowser.RunScript], for scripts that are not worth
+// The counterpart to [Page.RunScript], for scripts that are not worth
 // waiting on: a watcher that runs for the life of the session, work that should
 // survive this process. Output arrives at onEvent while the caller gets on with
 // something else, and [ScriptRun.Wait] collects the outcome if it is wanted.
@@ -187,7 +187,7 @@ type ScriptRun struct {
 //
 // @example
 //
-//	run, err := browser.StartScript(ctx, source, func(ev browserscale.ScriptEvent) {
+//	run, err := page.StartScript(ctx, source, func(ev browserscale.ScriptEvent) {
 //	    if ev.Log != nil {
 //	        fmt.Println(ev.Log.Level, ev.Log.Message)
 //	    }
@@ -196,7 +196,7 @@ type ScriptRun struct {
 //	    log.Fatal(err)
 //	}
 //	outcome, err := run.Wait(ctx)
-func (c *CloudBrowser) StartScript(ctx context.Context, source string, onEvent ScriptEventHandler) (*ScriptRun, error) {
+func (p *Page) StartScript(ctx context.Context, source string, onEvent ScriptEventHandler) (*ScriptRun, error) {
 	if onEvent == nil {
 		return nil, errors.New("browserscale.StartScript: onEvent must not be nil")
 	}
@@ -205,8 +205,8 @@ func (c *CloudBrowser) StartScript(ctx context.Context, source string, onEvent S
 	// yet. Events for it pile up in the server's per-reader buffer between the
 	// subscription and the pump, which is what that buffer is for.
 	streamCtx, cancel := context.WithCancel(ctx)
-	stream, err := c.client.StreamScriptEvents(streamCtx, &generated.StreamScriptEventsRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+	stream, err := p.client.StreamScriptEvents(streamCtx, &generated.StreamScriptEventsRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 	})
 	if err != nil {
 		cancel()
@@ -221,8 +221,8 @@ func (c *CloudBrowser) StartScript(ctx context.Context, source string, onEvent S
 		return nil, err
 	}
 
-	runId, err := c.client.StartScript(streamCtx, &generated.StartScriptRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+	runId, err := p.client.StartScript(streamCtx, &generated.StartScriptRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Source: source,
 	})
 	if err != nil {
@@ -231,7 +231,7 @@ func (c *CloudBrowser) StartScript(ctx context.Context, source string, onEvent S
 	}
 
 	run := &ScriptRun{
-		browser:  c,
+		page:     p,
 		stream:   stream,
 		cancel:   cancel,
 		handler:  onEvent,
@@ -244,8 +244,8 @@ func (c *CloudBrowser) StartScript(ctx context.Context, source string, onEvent S
 }
 
 // RunId is the id the browser gave this run. Pass it to
-// [CloudBrowser.StopScripts] to cancel the run from elsewhere, or to
-// [CloudBrowser.FollowScript] to watch it from another process.
+// [Page.StopScripts] to cancel the run from elsewhere, or to
+// [Page.FollowScript] to watch it from another process.
 func (r *ScriptRun) RunId() string { return r.runId }
 
 // Wait blocks until the run ends and returns how it ended.
@@ -293,7 +293,7 @@ func (r *ScriptRun) Wait(ctx context.Context) (*ScriptFinished, error) {
 // Reports only transport failures, and the local reader is detached regardless.
 // Cancelling a run that has already finished is a no-op rather than a failure.
 func (r *ScriptRun) Stop(ctx context.Context) error {
-	_, err := r.browser.StopScripts(ctx, r.runId)
+	_, err := r.page.StopScripts(ctx, r.runId)
 	r.cancel()
 	select {
 	case <-r.finished:
@@ -363,7 +363,7 @@ func (r *ScriptRun) pump() {
 }
 
 // ScriptFollow is a read-only view of script output, returned by
-// [CloudBrowser.FollowScript].
+// [Page.FollowScript].
 type ScriptFollow struct {
 	stream  generated.Browser_StreamScriptEventsClient
 	cancel  context.CancelFunc
@@ -376,18 +376,18 @@ type ScriptFollow struct {
 	dropped uint64
 }
 
-// FollowScript watches script output in a session without starting anything.
+// FollowScript watches script output on the page without starting anything.
 //
-// For the case [CloudBrowser.StartScript] cannot cover: a run somebody else
+// For the case [Page.StartScript] cannot cover: a run somebody else
 // launched, or one this process started before it restarted. Several readers can
-// watch the same session, each with its own buffer.
+// watch the same page, each with its own buffer.
 //
 // Only output produced from now on arrives — lines printed before the
 // subscription existed are not kept. A run that has already finished is
-// therefore invisible here; [CloudBrowser.ListScriptRuns] is how you tell that
+// therefore invisible here; [Page.ListScriptRuns] is how you tell that
 // apart from a run that is merely quiet.
 //
-// @param runId - run to follow, or "" to follow every run in the session
+// @param runId - run to follow, or "" to follow every run on the page
 // @param onEvent - called per event; see [ScriptEventHandler] for the ordering
 //
 //	and blocking rules
@@ -399,18 +399,18 @@ type ScriptFollow struct {
 //
 // @example
 //
-//	follow, err := browser.FollowScript(ctx, runId, func(ev browserscale.ScriptEvent) {
+//	follow, err := page.FollowScript(ctx, runId, func(ev browserscale.ScriptEvent) {
 //	    if ev.Log != nil { fmt.Println(ev.Log.Message) }
 //	})
 //	if err != nil { log.Fatal(err) }
 //	defer follow.Stop()
-func (c *CloudBrowser) FollowScript(ctx context.Context, runId string, onEvent ScriptEventHandler) (*ScriptFollow, error) {
+func (p *Page) FollowScript(ctx context.Context, runId string, onEvent ScriptEventHandler) (*ScriptFollow, error) {
 	if onEvent == nil {
 		return nil, errors.New("browserscale.FollowScript: onEvent must not be nil")
 	}
 	streamCtx, cancel := context.WithCancel(ctx)
-	stream, err := c.client.StreamScriptEvents(streamCtx, &generated.StreamScriptEventsRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+	stream, err := p.client.StreamScriptEvents(streamCtx, &generated.StreamScriptEventsRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		RunId: runId,
 	})
 	if err != nil {
@@ -488,11 +488,11 @@ func (f *ScriptFollow) pump() {
 	}
 }
 
-// StopScripts cancels runs in the session and reports how many it ended.
+// StopScripts cancels runs on the page and reports how many it ended.
 //
-// An empty runId cancels every run in the session, which is the only form
+// An empty runId cancels every run on the page, which is the only form
 // available to a caller that never learned an id — notably one abandoning a
-// blocking [CloudBrowser.RunScript].
+// blocking [Page.RunScript].
 //
 // @param runId - run to cancel, or "" for all of them
 //
@@ -506,10 +506,10 @@ func (f *ScriptFollow) pump() {
 //
 // @example
 //
-//	_, err := browser.StopScripts(ctx, "") // abandon everything running
-func (c *CloudBrowser) StopScripts(ctx context.Context, runId string) (int, error) {
-	resp, err := c.client.StopScripts(ctx, &generated.StopScriptsRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+//	_, err := page.StopScripts(ctx, "") // abandon everything running
+func (p *Page) StopScripts(ctx context.Context, runId string) (int, error) {
+	resp, err := p.client.StopScripts(ctx, &generated.StopScriptsRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		RunId: runId,
 	})
 	if err != nil {
@@ -518,12 +518,12 @@ func (c *CloudBrowser) StopScripts(ctx context.Context, runId string) (int, erro
 	return int(resp.Stopped), nil
 }
 
-// ListScriptRuns reports the scripts still running in the session.
+// ListScriptRuns reports the scripts still running on the page.
 //
 // Only runs in flight — a finished run is reported once on the event stream and
 // then forgotten, so this is not a history. Its use is finding work this caller
 // did not start: a script a previous process left behind, which
-// [CloudBrowser.StopScripts] needs an id to name.
+// [Page.StopScripts] needs an id to name.
 //
 // @returns []ScriptRunInfo one entry per run still executing
 //
@@ -533,14 +533,14 @@ func (c *CloudBrowser) StopScripts(ctx context.Context, runId string) (int, erro
 //
 // @example
 //
-//	runs, err := browser.ListScriptRuns(ctx)
+//	runs, err := page.ListScriptRuns(ctx)
 //	if err != nil { log.Fatal(err) }
 //	for _, run := range runs {
 //	    fmt.Println(run.RunId, run.Running)
 //	}
-func (c *CloudBrowser) ListScriptRuns(ctx context.Context) ([]ScriptRunInfo, error) {
-	resp, err := c.client.ListScriptRuns(ctx, &generated.ListScriptRunsRequest{
-		SessionId: c.sessionId, ApiKey: c.apiKey,
+func (p *Page) ListScriptRuns(ctx context.Context) ([]ScriptRunInfo, error) {
+	resp, err := p.client.ListScriptRuns(ctx, &generated.ListScriptRunsRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 	})
 	if err != nil {
 		return nil, err

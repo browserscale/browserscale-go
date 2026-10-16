@@ -418,7 +418,7 @@ type NetworkCapture struct {
 //	}
 //	defer capture.Stop(ctx)
 //
-//	_, _ = browser.Navigate(ctx, "https://example.com", 0)
+//	_, _ = page.Navigate(ctx, "https://example.com", 0)
 func (c *CloudBrowser) CaptureNetwork(ctx context.Context, opts NetworkCaptureOptions, onExchange NetworkExchangeHandler) (*NetworkCapture, error) {
 	nc, err := c.StreamNetworkExchanges(ctx, onExchange)
 	if err != nil {

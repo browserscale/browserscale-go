@@ -8,19 +8,18 @@ import (
 )
 
 type rentRequest struct {
-	RentDuration             int      `json:"rentDuration"`
-	APIKey                   string   `json:"apiKey"`
-	ProxyHost                string   `json:"proxyHost"`
-	ProxyPort                int      `json:"proxyPort"`
-	ProxyUsername            string   `json:"proxyUsername"`
-	ProxyPassword            string   `json:"proxyPassword"`
-	CountryCode              string   `json:"countryCode,omitempty"`
-	Timezone                 string   `json:"timezone,omitempty"`
-	Fingerprint              string   `json:"fingerprint,omitempty"`
-	WebGLRenderer            string   `json:"webglRenderer,omitempty"`
-	WebGLVendor              string   `json:"webglVendor,omitempty"`
-	WebGLSupportedExtensions []string `json:"webglSupportedExtensions,omitempty"`
-	GpuEnabled               bool     `json:"gpuEnabled,omitempty"`
+	RentDuration  int    `json:"rentDuration"`
+	APIKey        string `json:"apiKey"`
+	ProxyHost     string `json:"proxyHost"`
+	ProxyPort     int    `json:"proxyPort"`
+	ProxyUsername string `json:"proxyUsername"`
+	ProxyPassword string `json:"proxyPassword"`
+	CountryCode   string `json:"countryCode,omitempty"`
+	Timezone      string `json:"timezone,omitempty"`
+	Fingerprint   string `json:"fingerprint,omitempty"`
+	GpuEnabled    bool   `json:"gpuEnabled,omitempty"`
+	ProxyScheme   string `json:"proxyScheme,omitempty"`
+	MasqueProxy   string `json:"masqueProxy,omitempty"`
 }
 
 type rentResponse struct {
@@ -88,6 +87,8 @@ func callRentApi(config *BrowserConfig) (*rentResponse, error) {
 		ProxyPort:     config.proxyPort,
 		ProxyUsername: config.proxyUsername,
 		ProxyPassword: config.proxyPassword,
+		ProxyScheme:   string(config.proxyScheme),
+		MasqueProxy:   config.masqueProxy,
 	}
 	if config.countryCode != "" {
 		rentData.CountryCode = config.countryCode
@@ -97,15 +98,6 @@ func callRentApi(config *BrowserConfig) (*rentResponse, error) {
 	}
 	if config.fingerprint != "" {
 		rentData.Fingerprint = config.fingerprint
-	}
-	if config.webglRenderer != "" {
-		rentData.WebGLRenderer = config.webglRenderer
-	}
-	if config.webglVendor != "" {
-		rentData.WebGLVendor = config.webglVendor
-	}
-	if len(config.webglExtensions) > 0 {
-		rentData.WebGLSupportedExtensions = config.webglExtensions
 	}
 	if config.gpuEnabled {
 		rentData.GpuEnabled = true

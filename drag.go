@@ -9,7 +9,7 @@ import (
 // DragBy picks up the target and drops it at an offset relative to the
 // pickup point.
 //
-// The source is acquired with the same smart click as [CloudBrowser.Click] —
+// The source is acquired with the same smart click as [Page.Click] —
 // re-located, scrolled into view, settled and hit-tested — so the handle does
 // not have to be ready when you call this. The browser then presses the left
 // mouse button at a point inside the element, drags along a human-like path to
@@ -33,23 +33,25 @@ import (
 // exposed part left to grab
 // @throws occluded_after_evade - a reposition was tried and the handle was still
 // covered
+// @throws captcha_failed - a captcha held the drag and could not be solved (see
+// [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // @see [DragError] for the occlusion-failure detail
 //
 // @example
 //
-//	_, err := browser.DragBy(ctx, browserscale.CSS(".slider .handle"), 120, 0)
+//	_, err := page.DragBy(ctx, browserscale.CSS(".slider .handle"), 120, 0)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) DragBy(ctx context.Context, target *Locator, offsetX, offsetY float64) (*DragResult, error) {
-	return c.drag(ctx, target, &offsetX, &offsetY, nil, nil)
+func (p *Page) DragBy(ctx context.Context, target *Locator, offsetX, offsetY float64) (*DragResult, error) {
+	return p.drag(ctx, target, &offsetX, &offsetY, nil, nil)
 }
 
 // DragTo picks up the target and drops it at absolute root-viewport
 // coordinates.
 //
-// Same gesture and same source acquisition as [CloudBrowser.DragBy], but the
+// Same gesture and same source acquisition as [Page.DragBy], but the
 // drop destination is in page coordinates rather than relative to the pickup
 // point.
 //
@@ -66,26 +68,29 @@ func (c *CloudBrowser) DragBy(ctx context.Context, target *Locator, offsetX, off
 // exposed part left to grab
 // @throws occluded_after_evade - a reposition was tried and the handle was still
 // covered
+// @throws captcha_failed - a captcha held the drag and could not be solved (see
+// [CloudBrowser.EnableCaptchaAutoSolve])
 //
 // @see [DragError] for the occlusion-failure detail
 //
 // @example
 //
-//	_, err := browser.DragTo(ctx, browserscale.CSS(".card"), 800, 400)
+//	_, err := page.DragTo(ctx, browserscale.CSS(".card"), 800, 400)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) DragTo(ctx context.Context, target *Locator, absoluteX, absoluteY float64) (*DragResult, error) {
-	return c.drag(ctx, target, nil, nil, &absoluteX, &absoluteY)
+func (p *Page) DragTo(ctx context.Context, target *Locator, absoluteX, absoluteY float64) (*DragResult, error) {
+	return p.drag(ctx, target, nil, nil, &absoluteX, &absoluteY)
 }
 
-func (c *CloudBrowser) drag(ctx context.Context, target *Locator, ox, oy, ax, ay *float64) (*DragResult, error) {
+func (p *Page) drag(ctx context.Context, target *Locator, ox, oy, ax, ay *float64) (*DragResult, error) {
 	if err := target.validateTarget("Drag", false); err != nil {
 		return nil, err
 	}
-	resp, err := c.client.Drag(ctx, &generated.DragRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+	resp, err := p.client.Drag(ctx, &generated.DragRequest{
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -102,7 +107,7 @@ func (c *CloudBrowser) drag(ctx context.Context, target *Locator, ox, oy, ax, ay
 	// detail rather than a gRPC error. Surface it through err as a *DragError.
 	res, dragErr := dragResultFromProto(resp)
 	if dragErr != nil {
-		return res, dragErr
+		return res, p.notFocused(dragErr)
 	}
 	return res, nil
 }

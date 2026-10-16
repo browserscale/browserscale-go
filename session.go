@@ -13,8 +13,10 @@ import (
 
 // CloudBrowser is the SDK-side handle for an active browserscale browser session.
 //
-// One CloudBrowser corresponds to exactly one browser context, and its
-// commands act on that context's primary page.
+// One CloudBrowser corresponds to exactly one browser context. Its own methods
+// act on the context as a whole (proxy, cookies, storage, network, usage);
+// everything that acts on a document is on [Page], which
+// [CloudBrowser.FocusedPage] returns.
 type CloudBrowser struct {
 	apiKey         string
 	sessionId      string
@@ -59,13 +61,7 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 		return nil, err
 	}
 
-	conn, err := dialGrpc(rentResp.GrpcUrl)
-	if err != nil {
-		_, _ = callStopBrowserApi(config.apiKey, rentResp.SessionId)
-		return nil, err
-	}
-
-	return &CloudBrowser{
+	c := &CloudBrowser{
 		apiKey:         config.apiKey,
 		sessionId:      rentResp.SessionId,
 		grpcUrl:        rentResp.GrpcUrl,
@@ -73,9 +69,12 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 		timezone:       rentResp.Timezone,
 		acceptLanguage: rentResp.AcceptLanguage,
 		fingerprint:    rentResp.Fingerprint,
-		client:         generated.NewBrowserClient(conn),
-		conn:           conn,
-	}, nil
+	}
+	if err := c.connect(); err != nil {
+		_, _ = callStopBrowserApi(config.apiKey, rentResp.SessionId)
+		return nil, err
+	}
+	return c, nil
 }
 
 // ConnectSession attaches to an already-running session via gRPC.
@@ -85,9 +84,9 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 // RentBrowser this does not call the rent API — the session must already
 // exist server-side.
 //
-// @param grpcUrl - the session's gRPC endpoint as returned by [CloudBrowser.GrpcUrl],
+// @param grpcUrl - the session's gRPC endpoint as returned by [CloudBrowser.GrpcUrl]
 //
-//	e.g. "grpcs://api.browserscale.cloud:443" (TLS) or "grpc://host:port" (plaintext)
+//	or [ListBrowsers]; grpcs:// is TLS, grpc:// plaintext
 //
 // @param apiKey - API key authorizing access to the session
 // @param sessionId - id of the existing session to attach to
@@ -101,23 +100,21 @@ func RentBrowser(ctx context.Context, config *BrowserConfig) (*CloudBrowser, err
 //
 // @example
 //
-//	browser, err := browserscale.ConnectSession(ctx, "grpcs://api.browserscale.cloud:443", apiKey, sessionId)
+//	browser, err := browserscale.ConnectSession(ctx, grpcUrl, apiKey, sessionId)
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	defer browser.Close()
 func ConnectSession(ctx context.Context, grpcUrl string, apiKey string, sessionId string) (*CloudBrowser, error) {
-	conn, err := dialGrpc(grpcUrl)
-	if err != nil {
-		return nil, err
-	}
-	return &CloudBrowser{
+	c := &CloudBrowser{
 		apiKey:    apiKey,
 		sessionId: sessionId,
 		grpcUrl:   grpcUrl,
-		client:    generated.NewBrowserClient(conn),
-		conn:      conn,
-	}, nil
+	}
+	if err := c.connect(); err != nil {
+		return nil, err
+	}
+	return c, nil
 }
 
 // StopBrowser releases the session and closes the gRPC connection.
@@ -223,7 +220,7 @@ func StopBrowser(ctx context.Context, apiKey string, sessionId string) (*Session
 // created, including ones another machine is using, so it is not a way to tidy
 // up "my" sessions in a shared account.
 //
-// Unused credits are refunded per session, as with [StopBrowser].
+// Each session's billing stops with it, as with [StopBrowser].
 //
 // @param apiKey - API key whose sessions to release
 //
@@ -319,7 +316,7 @@ func (b BrowserInfo) Connect(ctx context.Context, apiKey string) (*CloudBrowser,
 // dialGrpc opens a gRPC client connection, choosing transport security from
 // the URL scheme: "grpcs://" dials with TLS against the system root CAs,
 // "grpc://" (or no scheme, for older servers) dials plaintext.
-func dialGrpc(grpcUrl string) (*grpc.ClientConn, error) {
+func dialGrpc(grpcUrl string, opts ...grpc.DialOption) (*grpc.ClientConn, error) {
 	target := grpcUrl
 	creds := insecure.NewCredentials()
 	switch {
@@ -329,7 +326,20 @@ func dialGrpc(grpcUrl string) (*grpc.ClientConn, error) {
 	case strings.HasPrefix(grpcUrl, "grpc://"):
 		target = strings.TrimPrefix(grpcUrl, "grpc://")
 	}
-	return grpc.NewClient(target, grpc.WithTransportCredentials(creds))
+	return grpc.NewClient(target, append([]grpc.DialOption{grpc.WithTransportCredentials(creds)}, opts...)...)
+}
+
+// connect dials the browser's gRPC endpoint and finishes the handle. The
+// handle exists before the connection because the connection's interceptor
+// builds Pages of it.
+func (c *CloudBrowser) connect() error {
+	conn, err := dialGrpc(c.grpcUrl, grpc.WithChainUnaryInterceptor(c.pageClosedInterceptor))
+	if err != nil {
+		return err
+	}
+	c.client = generated.NewBrowserClient(conn)
+	c.conn = conn
+	return nil
 }
 
 // SetApiEndpoint overrides the HTTP rent/stop endpoint.

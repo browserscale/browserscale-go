@@ -27,18 +27,19 @@ import (
 //
 // @example
 //
-//	_, err := browser.MoveTo(ctx, browserscale.CSS("nav .menu"))
+//	_, err := page.MoveTo(ctx, browserscale.CSS("nav .menu"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) MoveTo(ctx context.Context, target *Locator) (*ElementResult, error) {
+func (p *Page) MoveTo(ctx context.Context, target *Locator) (*ElementResult, error) {
 	if err := target.validateTarget("MoveTo", true); err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.MoveTo(ctx, &generated.MoveToRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+	resp, err := p.client.MoveTo(ctx, &generated.MoveToRequest{
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
@@ -54,7 +55,7 @@ func (c *CloudBrowser) MoveTo(ctx context.Context, target *Locator) (*ElementRes
 	// *MoveError.
 	res, moveErr := moveResultFromProto(resp)
 	if moveErr != nil {
-		return res, moveErr
+		return res, p.notFocused(moveErr)
 	}
 	return res, nil
 }

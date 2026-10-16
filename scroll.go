@@ -28,18 +28,19 @@ import (
 //
 // @example
 //
-//	_, err := browser.ScrollTo(ctx, browserscale.CSS("#footer"))
+//	_, err := page.ScrollTo(ctx, browserscale.CSS("#footer"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
-func (c *CloudBrowser) ScrollTo(ctx context.Context, target *Locator) (*ElementResult, error) {
+func (p *Page) ScrollTo(ctx context.Context, target *Locator) (*ElementResult, error) {
 	if err := target.validateTarget("ScrollTo", false); err != nil {
 		return nil, err
 	}
 
-	resp, err := c.client.ScrollTo(ctx, &generated.ScrollToRequest{
-		SessionId:     c.sessionId,
-		ApiKey:        c.apiKey,
+	resp, err := p.client.ScrollTo(ctx, &generated.ScrollToRequest{
+		SessionId:     p.sessionId,
+		PageId:        p.id,
+		ApiKey:        p.apiKey,
 		Selector:      strPtr(target.selector),
 		JsExpression:  strPtr(target.jsExpression),
 		BackendNodeId: intPtr(target.backendNodeId),
