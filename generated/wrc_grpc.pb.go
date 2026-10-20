@@ -55,6 +55,7 @@ const (
 	Browser_GetStorage_FullMethodName              = "/browserscale.v1.Browser/GetStorage"
 	Browser_SetStorage_FullMethodName              = "/browserscale.v1.Browser/SetStorage"
 	Browser_ClearStorage_FullMethodName            = "/browserscale.v1.Browser/ClearStorage"
+	Browser_GetClientIdentity_FullMethodName       = "/browserscale.v1.Browser/GetClientIdentity"
 	Browser_GetAuthSession_FullMethodName          = "/browserscale.v1.Browser/GetAuthSession"
 	Browser_SetAuthSession_FullMethodName          = "/browserscale.v1.Browser/SetAuthSession"
 	Browser_GetDOM_FullMethodName                  = "/browserscale.v1.Browser/GetDOM"
@@ -162,6 +163,10 @@ type BrowserClient interface {
 	GetStorage(ctx context.Context, in *GetStorageRequest, opts ...grpc.CallOption) (*GetStorageResponse, error)
 	SetStorage(ctx context.Context, in *SetStorageRequest, opts ...grpc.CallOption) (*CommandResult, error)
 	ClearStorage(ctx context.Context, in *ClearStorageRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	// One call that returns the context's client identity (User-Agent, UA client
+	// hints, Accept-Language, proxy) and optionally its cookies and localStorage
+	// — everything needed to continue the session out of browser.
+	GetClientIdentity(ctx context.Context, in *GetClientIdentityRequest, opts ...grpc.CallOption) (*GetClientIdentityResponse, error)
 	// Auth / DBSC (portable signed-in persona)
 	GetAuthSession(ctx context.Context, in *GetAuthSessionRequest, opts ...grpc.CallOption) (*GetAuthSessionResponse, error)
 	SetAuthSession(ctx context.Context, in *SetAuthSessionRequest, opts ...grpc.CallOption) (*CommandResult, error)
@@ -652,6 +657,16 @@ func (c *browserClient) ClearStorage(ctx context.Context, in *ClearStorageReques
 	return out, nil
 }
 
+func (c *browserClient) GetClientIdentity(ctx context.Context, in *GetClientIdentityRequest, opts ...grpc.CallOption) (*GetClientIdentityResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetClientIdentityResponse)
+	err := c.cc.Invoke(ctx, Browser_GetClientIdentity_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) GetAuthSession(ctx context.Context, in *GetAuthSessionRequest, opts ...grpc.CallOption) (*GetAuthSessionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAuthSessionResponse)
@@ -1063,6 +1078,10 @@ type BrowserServer interface {
 	GetStorage(context.Context, *GetStorageRequest) (*GetStorageResponse, error)
 	SetStorage(context.Context, *SetStorageRequest) (*CommandResult, error)
 	ClearStorage(context.Context, *ClearStorageRequest) (*CommandResult, error)
+	// One call that returns the context's client identity (User-Agent, UA client
+	// hints, Accept-Language, proxy) and optionally its cookies and localStorage
+	// — everything needed to continue the session out of browser.
+	GetClientIdentity(context.Context, *GetClientIdentityRequest) (*GetClientIdentityResponse, error)
 	// Auth / DBSC (portable signed-in persona)
 	GetAuthSession(context.Context, *GetAuthSessionRequest) (*GetAuthSessionResponse, error)
 	SetAuthSession(context.Context, *SetAuthSessionRequest) (*CommandResult, error)
@@ -1282,6 +1301,9 @@ func (UnimplementedBrowserServer) SetStorage(context.Context, *SetStorageRequest
 }
 func (UnimplementedBrowserServer) ClearStorage(context.Context, *ClearStorageRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClearStorage not implemented")
+}
+func (UnimplementedBrowserServer) GetClientIdentity(context.Context, *GetClientIdentityRequest) (*GetClientIdentityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetClientIdentity not implemented")
 }
 func (UnimplementedBrowserServer) GetAuthSession(context.Context, *GetAuthSessionRequest) (*GetAuthSessionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAuthSession not implemented")
@@ -2034,6 +2056,24 @@ func _Browser_ClearStorage_Handler(srv interface{}, ctx context.Context, dec fun
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_GetClientIdentity_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetClientIdentityRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetClientIdentity(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetClientIdentity_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetClientIdentity(ctx, req.(*GetClientIdentityRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Browser_GetAuthSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAuthSessionRequest)
 	if err := dec(in); err != nil {
@@ -2738,6 +2778,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClearStorage",
 			Handler:    _Browser_ClearStorage_Handler,
+		},
+		{
+			MethodName: "GetClientIdentity",
+			Handler:    _Browser_GetClientIdentity_Handler,
 		},
 		{
 			MethodName: "GetAuthSession",
