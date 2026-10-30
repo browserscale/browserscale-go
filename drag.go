@@ -29,6 +29,7 @@ import (
 // detail. Recover it with errors.As.
 //
 // @throws not_found - no element matched the locator
+// @throws not_visible - the handle was found but cannot be seen
 // @throws occluded_no_reachable_point - the handle is fully covered, with no
 // exposed part left to grab
 // @throws occluded_after_evade - a reposition was tried and the handle was still
@@ -64,6 +65,7 @@ func (p *Page) DragBy(ctx context.Context, target *Locator, offsetX, offsetY flo
 //	final cursor position (rootX, rootY) where the drop happened
 //
 // @throws not_found - no element matched the locator
+// @throws not_visible - the handle was found but cannot be seen
 // @throws occluded_no_reachable_point - the handle is fully covered, with no
 // exposed part left to grab
 // @throws occluded_after_evade - a reposition was tried and the handle was still

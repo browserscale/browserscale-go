@@ -276,6 +276,9 @@ func waitResultFromProto(r *generated.WaitResult) (*WaitResult, *WaitError) {
 			Bounds:        rectFromProto(e.Bounds),
 		}
 	}
+	if c := r.Captcha; c != nil {
+		res.Captcha = &WaitCaptcha{Kind: c.Kind, FrameId: c.FrameId}
+	}
 	if r.Error == nil {
 		return res, nil
 	}

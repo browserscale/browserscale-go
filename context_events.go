@@ -89,8 +89,9 @@ type ReactionEvent struct {
 	// click was done. Empty if none was.
 	InterruptedCommand string
 	// Error is set iff Success is false, with the click's code:
-	// "not_found" (the click target was gone), "occluded_no_reachable_point",
-	// "occluded_after_evade" (something covered it) or "failed". A failed
+	// "not_found" (the click target was gone), "not_visible" (it hid again),
+	// "occluded_no_reachable_point", "occluded_after_evade" (something covered
+	// it) or "failed". A failed
 	// reaction is used up like one that clicked.
 	Error *CommandError
 }
@@ -102,6 +103,9 @@ type CaptchaEvent struct {
 	// SolveId identifies the solve in both events and in the Captchas of the
 	// actions it held.
 	SolveId string
+	// Kind (detected) is the type of challenge, a short stable name such as
+	// "turnstile".
+	Kind string
 	// InterruptedCommand is the action running on the page when the captcha
 	// appeared ("click", "fill", "type", "drag"), held until the solve ended.
 	// Empty if none was.
@@ -131,7 +135,9 @@ type CaptchaEvent struct {
 	// [CaptchaInterruption].Outcome.
 	InterruptedOutcome string
 	// Error (resolved) is set iff Success is false. Codes: "solve_failed",
-	// "timeout", "limit_reached", "page_closed", "disabled" (auto-solve was
+	// "blocked" (the challenge was answered and the site replied with a block;
+	// solving again in this session will not help), "timeout",
+	// "limit_reached", "page_closed", "disabled" (auto-solve was
 	// disabled before the solve started) and "cancelled" (a navigation of the
 	// page started during the solve).
 	Error *CommandError
@@ -312,6 +318,7 @@ func (c *CloudBrowser) contextEventFromProto(e *generated.ContextEvent) (Context
 			Page: c.GetPage(d.GetPageId()),
 			Captcha: &CaptchaEvent{
 				SolveId:            d.GetSolveId(),
+				Kind:               d.GetKind(),
 				InterruptedCommand: d.GetInterruptedCommand(),
 				FrameId:            d.GetFrameId(),
 				Trigger:            d.GetTrigger(),

@@ -62,6 +62,9 @@ type ClickOpts struct {
 //
 // @throws not_found - no element matched the locator, or it could not be scrolled
 // into view
+// @throws not_visible - the target was found but cannot be seen (not rendered,
+// visibility:hidden or clipped away), so nothing covers it either. A selector's
+// first match is often a hidden copy, such as the one in a closed mobile menu
 // @throws occluded_no_reachable_point - the target is fully covered, with no
 // exposed part left to click
 // @throws occluded_after_evade - a reposition was tried and the target was still

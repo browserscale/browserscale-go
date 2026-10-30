@@ -229,8 +229,8 @@ type WaitKind string
 const (
 	// WaitKindElement: a [CSS] or [JS] condition matched; see WaitResult.Element.
 	WaitKindElement WaitKind = "element"
-	// WaitKindCaptcha: a [Captcha] condition matched. It carries no payload —
-	// solve it with [Page.SolveCaptcha].
+	// WaitKindCaptcha: a [Captcha] condition matched; see WaitResult.Captcha.
+	// Solve it with [Page.SolveCaptcha].
 	WaitKindCaptcha WaitKind = "captcha"
 	// WaitKindRequest: a [Request] condition matched; see WaitResult.Request.
 	WaitKindRequest WaitKind = "request"
@@ -241,18 +241,28 @@ const (
 // WaitResult is the outcome of a [Page.Wait] call: which condition matched
 // (Index, in argument order), what kind it was, and what it matched.
 //
-// Exactly one of Element, Request and Response is set, according to Kind; a
-// captcha match sets none of them. On a timeout, Index is -1, Kind is empty
-// and the error is a [*WaitError].
+// Exactly one of Element, Captcha, Request and Response is set, according to
+// Kind. On a timeout, Index is -1, Kind is empty and the error is a
+// [*WaitError].
 type WaitResult struct {
 	Index int32
 	Kind  WaitKind
 	// Element is the matched element, set iff Kind is [WaitKindElement].
 	Element *WaitElement
+	// Captcha is the matched challenge, set iff Kind is [WaitKindCaptcha].
+	Captcha *WaitCaptcha
 	// Request is the matched request, set iff Kind is [WaitKindRequest].
 	Request *InterceptedRequest
 	// Response is the matched response, set iff Kind is [WaitKindResponse].
 	Response *InterceptedResponse
+}
+
+// WaitCaptcha is the challenge a [Captcha] wait condition matched.
+type WaitCaptcha struct {
+	// Kind is the type of challenge, a short stable name such as "turnstile".
+	Kind string
+	// FrameId is the frame the challenge was found in.
+	FrameId string
 }
 
 // WaitElement is the element a [CSS] or [JS] wait condition matched.
@@ -684,6 +694,38 @@ func (e *MoveError) Error() string {
 		return "moveTo failed: " + e.Code + ": " + e.Message
 	}
 	return "moveTo failed: " + e.Code
+}
+
+// SolveCaptchaError is returned as the error from [Page.SolveCaptcha] when the
+// challenge was not solved. Implements the error interface; recover with
+// errors.As.
+type SolveCaptchaError struct {
+	// Code is "not_found", "unsupported", "solve_failed", "blocked",
+	// "timeout", "page_closed" or "cancelled"; see [Page.SolveCaptcha].
+	Code string
+	// Message is a human-readable description.
+	Message string
+	// Kind is the type of challenge found, a short stable name such as
+	// "turnstile"; empty when none was.
+	Kind string
+	// SolveId is the solve's id in the [ContextEventCaptchaDetected] and
+	// [ContextEventCaptchaResolved] events; empty when no solve ran.
+	SolveId string
+}
+
+// Error implements the error interface.
+func (e *SolveCaptchaError) Error() string {
+	if e == nil {
+		return "solveCaptcha failed"
+	}
+	head := "solveCaptcha failed: " + e.Code
+	if e.Kind != "" {
+		head += " (" + e.Kind + ")"
+	}
+	if e.Message != "" {
+		head += ": " + e.Message
+	}
+	return head
 }
 
 // DragResult is the outcome of a [CloudBrowser.Drag] gesture: the resolved

@@ -29,25 +29,46 @@ import (
 //
 // @returns empty string on success — the solution is applied server-side
 //
-// Reports a plain error when no captcha appeared within timeoutMs, or when the
-// one that did could not be solved within retryAmount attempts. Neither carries a
-// code: solving runs outside the page, so there is no per-command code set here.
+// A challenge that was not solved is reported as a [*SolveCaptchaError] with a
+// code and, when one was found, its Kind:
+//
+// @throws not_found - no challenge waiting for an answer appeared within
+// timeoutMs. One that passed on its own does not count, so the page may simply
+// be through
+// @throws unsupported - a challenge was found that cannot be solved yet
+// @throws solve_failed - the solver answered it and it did not clear within
+// retryAmount rounds
+// @throws blocked - it was answered and the site replied with a block instead
+// of letting the visitor through; solving again in this session will not help
+// @throws timeout - timeoutMs ran out while the solver was at it
+// @throws page_closed - the page closed during the solve
+// @throws cancelled - a navigation of the page started during the solve
+//
+// @see [SolveCaptchaError] for recovering the code and kind with errors.As
 //
 // @example
 //
 //	if _, err := page.SolveCaptcha(ctx, 0, 2); err != nil {
+//	    var ce *browserscale.SolveCaptchaError
+//	    if errors.As(err, &ce) && ce.Code == "blocked" {
+//	        // start over in a fresh session
+//	    }
 //	    log.Fatal(err)
 //	}
 func (p *Page) SolveCaptcha(ctx context.Context, timeoutMs, retryAmount int32) (string, error) {
 	resp, err := p.client.SolveCaptcha(ctx, &generated.SolveCaptchaRequest{
 		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
-		TimeoutMs:   timeoutMs,
-		RetryAmount: retryAmount,
+		TimeoutMs:     timeoutMs,
+		RetryAmount:   retryAmount,
+		ReportFailure: true,
 	})
-	if resp != nil {
-		return resp.Result, err
+	if err != nil {
+		return "", err
 	}
-	return "", err
+	if e := resp.GetError(); e != nil {
+		return "", &SolveCaptchaError{Code: e.Code, Message: e.Message, Kind: resp.Kind, SolveId: resp.GetSolveId()}
+	}
+	return resp.Result, nil
 }
 
 // CaptchaAutoSolveOpts configures [CloudBrowser.EnableCaptchaAutoSolve].

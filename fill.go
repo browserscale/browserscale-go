@@ -73,6 +73,8 @@ type FillOpts struct {
 //
 // @throws not_found - no element matched the locator, or it could not be scrolled
 // into view
+// @throws not_visible - the field was found but cannot be seen, e.g. it sits in
+// an inactive tab
 // @throws occluded_no_reachable_point - the field is fully covered, with no
 // exposed part left to click
 // @throws occluded_after_evade - a reposition was tried and the field was still

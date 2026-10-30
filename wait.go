@@ -45,11 +45,13 @@ func (c *CaptchaCondition) applyWait(w *waitCall) {
 }
 
 // Captcha matches as soon as a supported captcha or bot-protection challenge
-// is on the page.
+// is on the page and waits for an answer. A widget that passed, or passes
+// without interaction, does not count.
 //
 // It is a state, like [CSS]: a challenge that is already showing matches at
-// once. On a match the result's Kind is [WaitKindCaptcha]; hand the page to
-// [Page.SolveCaptcha] to solve it.
+// once. On a match the result's Kind is [WaitKindCaptcha] and its Captcha
+// names the kind of challenge; hand the page to [Page.SolveCaptcha] to solve
+// it.
 //
 // Most challenges live in an iframe, so a wait containing Captcha searches
 // every frame — its element conditions included — unless a locator pins a
