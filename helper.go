@@ -274,6 +274,7 @@ func waitResultFromProto(r *generated.WaitResult) (*WaitResult, *WaitError) {
 			BackendNodeId: e.BackendNodeId,
 			IsVisible:     e.IsVisible,
 			Bounds:        rectFromProto(e.Bounds),
+			SelectorMatch: selectorMatchFromProto(e.SelectorMatch),
 		}
 	}
 	if c := r.Captcha; c != nil {
@@ -310,12 +311,20 @@ func waitConditionStatusFromProto(c *generated.WaitConditionStatus) WaitConditio
 		FrameId:       c.FrameId,
 		IsVisible:     c.IsVisible,
 		Occluder:      occluderInfoFromProto(c.Occluder),
+		SelectorMatch: selectorMatchFromProto(c.SelectorMatch),
 	}
 	if c.Bounds != nil {
 		b := rectFromProto(c.Bounds)
 		out.Bounds = &b
 	}
 	return out
+}
+
+func selectorMatchFromProto(m *generated.SelectorMatch) *SelectorMatch {
+	if m == nil {
+		return nil
+	}
+	return &SelectorMatch{Index: m.Index, Count: m.Count}
 }
 
 func elementResultFromProto(r *generated.ElementResult) *ElementResult {
@@ -350,6 +359,7 @@ func clickResultFromProto(r *generated.ClickResult) (*ElementResult, *ClickError
 		RootX:         r.RootX,
 		RootY:         r.RootY,
 		Captchas:      captchaInterruptionsFromProto(r.Captchas),
+		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -401,6 +411,7 @@ func fillResultFromProto(r *generated.FillResult) (*ElementResult, *FillError) {
 		RootX:         r.RootX,
 		RootY:         r.RootY,
 		Captchas:      captchaInterruptionsFromProto(r.Captchas),
+		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -483,6 +494,7 @@ func dragResultFromProto(r *generated.DragResult) (*DragResult, *DragError) {
 		EndX:          r.EndX,
 		EndY:          r.EndY,
 		Captchas:      captchaInterruptionsFromProto(r.Captchas),
+		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -507,6 +519,7 @@ func scrollResultFromProto(r *generated.ScrollResult) (*ElementResult, *ScrollEr
 		BackendNodeId: r.BackendNodeId,
 		IsVisible:     r.IsVisible,
 		Bounds:        rectFromProto(r.Bounds),
+		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil
@@ -529,6 +542,7 @@ func moveResultFromProto(r *generated.MoveResult) (*ElementResult, *MoveError) {
 		Bounds:        rectFromProto(r.Bounds),
 		RootX:         r.RootX,
 		RootY:         r.RootY,
+		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
 	}
 	if r.Success || r.Error == nil {
 		return res, nil

@@ -276,6 +276,28 @@ type WaitElement struct {
 	IsVisible bool
 	// Bounds is the element's rect in root-viewport CSS pixels.
 	Bounds Rect
+	// SelectorMatch is set when a [CSS] condition matched an element other
+	// than the selector's first match.
+	SelectorMatch *SelectorMatch
+}
+
+// SelectorMatch says which of a CSS selector's matches a call took when it was
+// not simply the first.
+//
+// Where an element has to be visible (a [CSS] wait condition or reaction, and
+// every action), a selector means its first rendered match: matches that are
+// not rendered at all (display:none, visibility:hidden, no size) are passed
+// over, so a hidden copy such as the one in a closed mobile menu does not
+// shadow the visible element. A covered or offscreen match is still rendered
+// and stays the target. Set only when the selector matched several elements
+// and the call looked past the first: on a later match it took, or, with
+// Index 0, when none of them is rendered.
+type SelectorMatch struct {
+	// Index is the 0-based position among the selector's matches in document
+	// order.
+	Index int32
+	// Count is how many elements the selector matched.
+	Count int32
 }
 
 // WaitConditionStatus is the per-condition diagnostic carried by [WaitError]
@@ -301,6 +323,10 @@ type WaitConditionStatus struct {
 	// Occluder is the intercepting element, present iff State ==
 	// "found_occluded".
 	Occluder *OccluderInfo
+	// SelectorMatch is set when the selector matched several elements and
+	// this status is about one other than the first, or none of them is
+	// rendered.
+	SelectorMatch *SelectorMatch
 }
 
 // WaitError is returned as the error from [Page.Wait] when no condition
@@ -378,6 +404,9 @@ type ElementResult struct {
 	// [CloudBrowser.EnableCaptchaAutoSolve]). Nil if none did, and always nil
 	// for the other actions.
 	Captchas []CaptchaInterruption
+	// SelectorMatch is set when a [CSS] target resolved to other than the
+	// selector's first match.
+	SelectorMatch *SelectorMatch
 }
 
 // CaptchaInterruption is a captcha solve that held an action while it ran.
@@ -741,6 +770,9 @@ type DragResult struct {
 	// Captchas lists the captcha solves that held the drag, in order. Nil if
 	// none did.
 	Captchas []CaptchaInterruption
+	// SelectorMatch is set when a [CSS] source resolved to other than the
+	// selector's first match.
+	SelectorMatch *SelectorMatch
 }
 
 // SelectOptionResult reports which <option> a SelectByXxx call ended up
