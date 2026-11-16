@@ -21,9 +21,11 @@ type ReactionInfo struct {
 	ActionSelector string
 	// ActionJsExpression is set if the click target differs from the matched element.
 	ActionJsExpression string
-	// FrameID is the frame scope: "" for the main frame, a specific frameId, or
-	// [AllFrames].
-	FrameID string
+	// Match is the locator the reaction watches for, as it was given to
+	// AddReaction: the selector or expression above together with the
+	// container it was put in with [Locator.In], and its Visible setting.
+	// Print it with [Locator.String] to see where the reaction looks.
+	Match *Locator
 	// Visible reports whether the match additionally requires visibility.
 	Visible bool
 	// AllPages reports whether the reaction was registered for every page
@@ -37,8 +39,8 @@ type ReactionInfo struct {
 type ReactionOpts struct {
 	// On overrides the click target. Nil = click the matched element itself.
 	// Provide a CSS or JS [Locator] to click a different element, resolved in
-	// the matched element's frame (e.g. a modal's close "X"). Node/At locators
-	// are rejected.
+	// the matched element's frame (e.g. a modal's close "X"). It takes no
+	// container of its own; a reference or At locator is rejected.
 	On *Locator
 
 	// Button is the mouse button for the click.
@@ -68,16 +70,18 @@ type ReactionOpts struct {
 // [CloudBrowser.AddReaction] for one that covers every page. Each click is
 // reported as a [ContextEventReactionFired] on [CloudBrowser.ContextEvents].
 //
-// match must be a CSS or JS [Locator] — [Node] and [At] are rejected. Use
-// [Locator.InAllFrames] to watch every frame and [Locator.Visible](false) to
-// opt out of the default visibility gate.
+// match must be a CSS or JS [Locator] — a reference and [At] are rejected. A
+// [CSS] match is watched for on the whole page, every frame included, the
+// ones that appear later too; a [JS] match runs in the main document. Use
+// [Locator.In] to watch one frame or one part of the page instead, and
+// [Locator.Visible](false) to opt out of the default visibility gate.
 //
 // @param match - the CSS/JS locator to watch for
 //
 // @returns the reactionId (pass to [Page.RemoveReaction])
 //
 // A match that is nil, carries neither a selector nor a JS expression, or is a
-// Node/At locator is rejected before anything is sent. Beyond that, reports only
+// reference or At locator is rejected before anything is sent. Beyond that, reports only
 // transport failures: registering a reaction has no semantic failure of its own,
 // and says nothing about whether the element it watches ever appears.
 //
@@ -88,11 +92,17 @@ type ReactionOpts struct {
 // @example
 //
 //	// Auto-dismiss a consent button whenever it appears, in any frame.
-//	id, err := page.AddReaction(ctx, browserscale.CSS("button#accept").InAllFrames())
+//	id, err := page.AddReaction(ctx, browserscale.CSS("button#accept"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
 //	_ = id
+//
+// @example
+//
+//	// Only the one inside the consent provider's iframe.
+//	cmp := browserscale.FrameURL("*consent.example.com/*")
+//	id, err := page.AddReaction(ctx, browserscale.CSS("button.accept").In(cmp))
 func (p *Page) AddReaction(ctx context.Context, match *Locator) (string, error) {
 	return addReaction(ctx, p.client, p.sessionId, p.apiKey, p.id, match, ReactionOpts{})
 }
@@ -129,7 +139,7 @@ func (p *Page) AddReactionWith(ctx context.Context, match *Locator, opts Reactio
 // @returns the reactionId (pass to [CloudBrowser.RemoveReaction])
 //
 // A match that is nil, carries neither a selector nor a JS expression, or is a
-// Node/At locator is rejected before anything is sent. Beyond that, reports only
+// reference or At locator is rejected before anything is sent. Beyond that, reports only
 // transport failures.
 //
 // @see [CloudBrowser.AddReactionWith] for a different click target, button,
@@ -139,7 +149,7 @@ func (p *Page) AddReactionWith(ctx context.Context, match *Locator, opts Reactio
 // @example
 //
 //	// Accept the consent banner on whichever page it shows up.
-//	id, err := browser.AddReaction(ctx, browserscale.CSS("button#accept").InAllFrames())
+//	id, err := browser.AddReaction(ctx, browserscale.CSS("button#accept"))
 //	if err != nil {
 //	    log.Fatal(err)
 //	}
@@ -176,7 +186,7 @@ func addReaction(ctx context.Context, client generated.BrowserClient, sessionID,
 		ApiKey:            apiKey,
 		MatchSelector:     strPtr(match.selector),
 		MatchJsExpression: strPtr(match.jsExpression),
-		FrameId:           pickFrame("", match),
+		In:                match.chain(),
 		Visible:           match.visible,
 		Button:            strPtr(o.Button),
 		ClickCount:        intPtr(o.ClickCount),
@@ -311,14 +321,21 @@ func listReactions(ctx context.Context, client generated.BrowserClient, sessionI
 	}
 	out := make([]ReactionInfo, 0, len(resp.GetReactions()))
 	for _, r := range resp.GetReactions() {
+		visible := r.GetVisible()
+		match := &Locator{
+			selector:     r.GetMatchSelector(),
+			jsExpression: r.GetMatchJsExpression(),
+			in:           locatorFromChain(r.GetIn()),
+			visible:      &visible,
+		}
 		out = append(out, ReactionInfo{
 			ReactionID:         r.GetReactionId(),
 			MatchSelector:      r.GetMatchSelector(),
 			MatchJsExpression:  r.GetMatchJsExpression(),
 			ActionSelector:     r.GetActionSelector(),
 			ActionJsExpression: r.GetActionJsExpression(),
-			FrameID:            r.GetFrameId(),
-			Visible:            r.GetVisible(),
+			Match:              match,
+			Visible:            visible,
 			AllPages:           r.GetAllPages(),
 		})
 	}
@@ -326,30 +343,33 @@ func listReactions(ctx context.Context, client generated.BrowserClient, sessionI
 }
 
 // validateReactionMatch enforces that the match is a CSS/JS locator (like a
-// Wait condition): a selector or JS expression is required, and Node/At are
-// rejected.
+// Wait condition): a selector or JS expression is required, and a reference,
+// a frame or At are rejected.
 func validateReactionMatch(cmd string, l *Locator) error {
 	if l == nil {
 		return fmt.Errorf("browserscale.%s: a match locator is required", cmd)
 	}
-	if l.backendNodeId != 0 || l.x != nil || l.y != nil {
-		return fmt.Errorf("browserscale.%s: match must be a CSS/JS locator (Node()/At() are not valid reaction matches)", cmd)
+	if l.ref != "" || l.x != nil || l.y != nil {
+		return fmt.Errorf("browserscale.%s: match must be a CSS/JS locator (a reference or At() is not a reaction match: a reaction watches for an element to appear)", cmd)
 	}
 	if l.selector == "" && l.jsExpression == "" {
-		return fmt.Errorf("browserscale.%s: match must have a CSS selector or JS expression", cmd)
+		return fmt.Errorf("browserscale.%s: match must have a CSS selector or JS expression; to watch a frame, put the locator in it with In", cmd)
 	}
-	return nil
+	return l.validateChain(cmd)
 }
 
 // validateReactionAction enforces that the optional click target (ReactionOpts.On)
-// is a CSS/JS locator resolved in the matched element's frame — Node/At and
-// per-target frame overrides are not meaningful here.
+// is a CSS/JS locator resolved in the matched element's frame — a reference,
+// At and a container of its own are not meaningful here.
 func validateReactionAction(cmd string, l *Locator) error {
-	if l.backendNodeId != 0 || l.x != nil || l.y != nil {
-		return fmt.Errorf("browserscale.%s: On must be a CSS/JS locator (Node()/At() are not valid action targets)", cmd)
+	if l.ref != "" || l.x != nil || l.y != nil {
+		return fmt.Errorf("browserscale.%s: On must be a CSS/JS locator (a reference or At() is not a valid click target here)", cmd)
 	}
 	if l.selector == "" && l.jsExpression == "" {
 		return fmt.Errorf("browserscale.%s: On must have a CSS selector or JS expression", cmd)
+	}
+	if l.in != nil {
+		return fmt.Errorf("browserscale.%s: On is looked for in the matched element's frame and takes no container of its own", cmd)
 	}
 	return nil
 }

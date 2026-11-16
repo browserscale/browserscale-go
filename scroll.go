@@ -17,10 +17,16 @@ import (
 //
 //	[At] is rejected
 //
-// @returns *ElementResult with the resolved frameId, backendNodeId,
+// @returns *ElementResult with the the element's Ref and Frame,
 //
 //	post-scroll isVisible and the element's bounds after the scroll
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator, or it could not be
 // scrolled. The only semantic failure this call has
 //
@@ -38,13 +44,13 @@ func (p *Page) ScrollTo(ctx context.Context, target *Locator) (*ElementResult, e
 	}
 
 	resp, err := p.client.ScrollTo(ctx, &generated.ScrollToRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame("", target),
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
 	})
 	if err != nil {
 		return nil, err
@@ -54,7 +60,7 @@ func (p *Page) ScrollTo(ctx context.Context, target *Locator) (*ElementResult, e
 	// as a *ScrollError.
 	res, scrollErr := scrollResultFromProto(resp)
 	if scrollErr != nil {
-		return res, scrollErr
+		return res, p.checked(ctx, target, scrollErr)
 	}
 	return res, nil
 }

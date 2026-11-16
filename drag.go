@@ -20,7 +20,7 @@ import (
 // @param offsetX - horizontal distance to drag, in CSS pixels
 // @param offsetY - vertical distance to drag, in CSS pixels
 //
-// @returns *DragResult with the resolved frameId, backendNodeId and the
+// @returns *DragResult with the the element's Ref and Frame and the
 //
 //	final cursor position (rootX, rootY) where the drop happened
 //
@@ -28,6 +28,12 @@ import (
 // it — err is a [*DragError] whose ClickError carries the full occlusion
 // detail. Recover it with errors.As.
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator
 // @throws not_visible - the handle was found but cannot be seen
 // @throws occluded_no_reachable_point - the handle is fully covered, with no
@@ -60,10 +66,16 @@ func (p *Page) DragBy(ctx context.Context, target *Locator, offsetX, offsetY flo
 // @param absoluteX - horizontal drop coordinate in the root viewport
 // @param absoluteY - vertical drop coordinate in the root viewport
 //
-// @returns *DragResult with the resolved frameId, backendNodeId and the
+// @returns *DragResult with the the element's Ref and Frame and the
 //
 //	final cursor position (rootX, rootY) where the drop happened
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator
 // @throws not_visible - the handle was found but cannot be seen
 // @throws occluded_no_reachable_point - the handle is fully covered, with no
@@ -90,17 +102,17 @@ func (p *Page) drag(ctx context.Context, target *Locator, ox, oy, ax, ay *float6
 		return nil, err
 	}
 	resp, err := p.client.Drag(ctx, &generated.DragRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame("", target),
-		OffsetX:       ox,
-		OffsetY:       oy,
-		AbsoluteX:     ax,
-		AbsoluteY:     ay,
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
+		OffsetX:      ox,
+		OffsetY:      oy,
+		AbsoluteX:    ax,
+		AbsoluteY:    ay,
 	})
 	if err != nil {
 		return nil, err
@@ -109,7 +121,7 @@ func (p *Page) drag(ctx context.Context, target *Locator, ox, oy, ax, ay *float6
 	// detail rather than a gRPC error. Surface it through err as a *DragError.
 	res, dragErr := dragResultFromProto(resp)
 	if dragErr != nil {
-		return res, p.notFocused(dragErr)
+		return res, p.checked(ctx, target, dragErr)
 	}
 	return res, nil
 }

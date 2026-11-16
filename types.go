@@ -8,10 +8,14 @@ type Rect struct {
 	Height float64
 }
 
-// FrameInfo describes a single frame within a page's frame tree.
+// FrameInfo describes a single frame within a page's frame tree, as
+// [Page.Frames] and [CloudBrowser.Pages] report it.
 type FrameInfo struct {
-	FrameId      string
-	Url          string
+	FrameId string
+	Url     string
+	// Name is the frame's name (its iframe's name attribute), empty when it
+	// has none. What [FrameName] goes by.
+	Name         string
 	IsOOPIF      bool
 	HasJSContext bool
 	IsLoading    bool
@@ -19,6 +23,69 @@ type FrameInfo struct {
 	AbsoluteRect Rect
 	RelativeRect Rect
 	Children     []*FrameInfo
+}
+
+// Locator returns this frame as a container for [Locator.In],
+// [Page.EvaluateIn] and [ObservationOpts].Scope. It names the frame by its
+// id, which holds for this session; see [FrameByID].
+//
+// @example
+//
+//	frames, _ := page.Frames(ctx)
+//	for _, f := range frames.Children {
+//	    if f.IsVisible && strings.Contains(f.Url, "checkout") {
+//	        _, _ = page.Click(ctx, browserscale.CSS("button.pay").In(f.Locator()))
+//	    }
+//	}
+func (f *FrameInfo) Locator() *Locator {
+	if f == nil {
+		return nil
+	}
+	return FrameByID(f.FrameId)
+}
+
+// Walk calls fn for this frame and every frame below it, parents before their
+// children, in the order the frames appear in their documents. It stops as
+// soon as fn returns false.
+//
+// @example
+//
+//	frames, _ := page.Frames(ctx)
+//	frames.Walk(func(f *browserscale.FrameInfo, depth int) bool {
+//	    fmt.Println(strings.Repeat("  ", depth), f.Url, f.Name)
+//	    return true
+//	})
+func (f *FrameInfo) Walk(fn func(frame *FrameInfo, depth int) bool) {
+	f.walk(fn, 0)
+}
+
+func (f *FrameInfo) walk(fn func(*FrameInfo, int) bool, depth int) bool {
+	if f == nil {
+		return true
+	}
+	if !fn(f, depth) {
+		return false
+	}
+	for _, c := range f.Children {
+		if !c.walk(fn, depth+1) {
+			return false
+		}
+	}
+	return true
+}
+
+// FrameRef is the frame an element was found in. Every result that names an
+// element carries one, so a call that searched the whole page says where its
+// element lives.
+type FrameRef struct {
+	// ID is the frame's id, usable with [FrameByID]. It stays the same across
+	// navigations of the frame.
+	ID string
+	// URL is the URL of the document the frame showed when the element was
+	// found.
+	URL string
+	// Main reports whether it is the page's main frame.
+	Main bool
 }
 
 // PageInfo describes an open page (tab or popup) inside a browser context, as
@@ -190,8 +257,8 @@ type NetworkExchange struct {
 	// RequestBodySize is the number of bytes kept for the request body.
 	RequestBodySize int64
 	// RequestBodyTruncated reports that part of the request body is missing:
-	// it hit the per-body cap, or it was a file or streamed upload, which are
-	// not kept.
+	// it hit the per-body cap, or its source failed before all of it was
+	// read. File and streamed uploads are kept like any other body.
 	RequestBodyTruncated bool
 
 	// HasResponse is false when the request failed before any response
@@ -261,17 +328,20 @@ type WaitResult struct {
 type WaitCaptcha struct {
 	// Kind is the type of challenge, a short stable name such as "turnstile".
 	Kind string
-	// FrameId is the frame the challenge was found in.
-	FrameId string
+	// Frame is the frame the challenge was found in.
+	Frame FrameRef
 }
 
 // WaitElement is the element a [CSS] or [JS] wait condition matched.
 type WaitElement struct {
-	// FrameId is the frame the element lives in.
-	FrameId string
-	// BackendNodeId addresses the element in later calls via [Node]; 0 when a
-	// JS expression matched with a truthy non-Element value.
-	BackendNodeId int32
+	// Ref names the matched element: pass it to any action to act on exactly
+	// this element, or to [Locator.In] to look inside it. No frame has to be
+	// named with it. Nil when a JS expression matched with a truthy value
+	// that is not an element. See [Ref] for how long it stays good.
+	Ref *Locator
+	// Frame is the frame the element lives in (for a non-element match, the
+	// frame the expression ran in).
+	Frame FrameRef
 	// IsVisible reports whether the element was visible at the match.
 	IsVisible bool
 	// Bounds is the element's rect in root-viewport CSS pixels.
@@ -311,10 +381,16 @@ type WaitConditionStatus struct {
 	// "pending_steady", or "not_seen" for a [Request] / [Response] condition
 	// that never saw a matching request.
 	State string
-	// BackendNodeId last seen for this condition (0 if never found).
-	BackendNodeId int32
+	// Ref names the element last seen for this condition; nil if it was never
+	// found or the match was not an element.
+	Ref *Locator
 	// FrameId where it was last seen (empty if never found).
 	FrameId string
+	// ScopeError is set when the condition could not even be looked for at
+	// the last look, because a container given with [Locator.In] led nowhere:
+	// it says which link of the chain, and what was missing. State is
+	// "not_found" then.
+	ScopeError string
 	// IsVisible reports whether it was CSS-visible at the last observation.
 	IsVisible bool
 	// Bounds is the last known rect in root-viewport coordinates (nil if never
@@ -371,8 +447,8 @@ type NavigateResult struct {
 
 // EvaluateResult carries the outcome of a JS evaluate call.
 //
-// If the expression returned a DOM element, BackendNodeId/IsVisible/Bounds
-// are populated and Value is nil. Otherwise Value holds the parsed JSON
+// If the expression returned a DOM element, Ref/IsVisible/Bounds are
+// populated and Value is nil. Otherwise Value holds the parsed JSON
 // value (string/number/bool/[]any/map[string]any/nil). On parse failure
 // Value falls back to the raw server string so the caller is never empty-
 // handed.
@@ -380,11 +456,15 @@ type EvaluateResult struct {
 	// Success is false only when the expression never produced a value, in which
 	// case the error carries the reason. An expression that answers falsy is a
 	// successful evaluation, so this does not mean "the answer was false".
-	Success       bool
-	Value         any
-	BackendNodeId int32
-	IsVisible     bool
-	Bounds        Rect
+	Success bool
+	Value   any
+	// Ref names the element the expression returned, ready to pass to an
+	// action or to [Locator.In]; nil when it returned anything else.
+	Ref *Locator
+	// Frame is the frame the expression ran in.
+	Frame     FrameRef
+	IsVisible bool
+	Bounds    Rect
 }
 
 // ElementResult is the outcome of an element interaction such as
@@ -392,13 +472,19 @@ type EvaluateResult struct {
 // the resolved element plus the root-relative coordinates the action
 // was performed at.
 type ElementResult struct {
-	Success       bool
-	FrameId       string
-	BackendNodeId int32
-	IsVisible     bool
-	Bounds        Rect
-	RootX         float64
-	RootY         float64
+	Success bool
+	// Ref names the element the call acted on: pass it to a later action to
+	// act on exactly this element again, or to [Locator.In] to look inside
+	// it. Nil for a call that was given coordinates ([At]). See [Ref] for how
+	// long it stays good.
+	Ref *Locator
+	// Frame is the frame the element was found in. A [CSS] target is looked
+	// for on the whole page, so this is where to read which frame it was.
+	Frame     FrameRef
+	IsVisible bool
+	Bounds    Rect
+	RootX     float64
+	RootY     float64
 	// Captchas lists the captcha solves that held a [Page.Click] or
 	// [Page.Fill] while it ran, in order (see
 	// [CloudBrowser.EnableCaptchaAutoSolve]). Nil if none did, and always nil
@@ -432,13 +518,18 @@ type CaptchaInterruption struct {
 // root-viewport CSS pixels. Populated on [ClickError] for occlusion failures so
 // the caller can locate and clear the blocker (e.g. find its close button).
 type OccluderInfo struct {
-	BackendNodeId int32
-	FrameId       string
-	TagName       string
-	Id            string
-	ClassName     string
-	Text          string
-	Bounds        Rect
+	// Ref names the blocker itself: pass it to [Page.Click] to click it, or to
+	// [Locator.In] to look for its close button inside it. Nil when it could
+	// not be named.
+	Ref *Locator
+	// FrameId is the frame the blocker lives in, which may differ from the
+	// target's (a page-level modal covering an iframe).
+	FrameId   string
+	TagName   string
+	Id        string
+	ClassName string
+	Text      string
+	Bounds    Rect
 	// PointerEvents is the blocker's computed pointer-events keyword (e.g.
 	// "auto", "none", "all"). Lets you tell an invisible pass-through layer from
 	// one that genuinely swallows the click.
@@ -527,7 +618,11 @@ type ClickError struct {
 	// (target fully covered, no exposed part reachable), "occluded_after_evade"
 	// (a reposition was tried but the target was still covered) or
 	// "captcha_failed" (a captcha held the click and could not be solved, see
-	// [CloudBrowser.EnableCaptchaAutoSolve]).
+	// [CloudBrowser.EnableCaptchaAutoSolve]). Where the target was looked for
+	// has its own codes: "container_not_found" (a container given with
+	// [Locator.In] is not on the page), "outside_scope" (a JS target returned
+	// an element outside its container) and "stale_ref" (a reference whose
+	// element is gone; the call returns a [StaleRefError] around this error).
 	Code string
 	// Message is a human-readable description.
 	Message string
@@ -587,7 +682,7 @@ type FillError struct {
 	FocusedBackendNodeId int32
 	// FocusedElement describes the element that grabbed focus instead of the
 	// target ("focus_stolen"), so you can act on it (e.g. a consent button).
-	FocusedElement *ElementRef
+	FocusedElement *FocusedElement
 	// TargetEditable and TargetValueLength report the fill target's own state at
 	// the point of failure (the focus codes): whether it is still an editable
 	// text sink and its current text length. Both nil when not reported.
@@ -595,12 +690,13 @@ type FillError struct {
 	TargetValueLength *int
 }
 
-// ElementRef is a lightweight descriptor of an element — enough to identify it
-// (and decide what to do) without another DOM round-trip. It names the element
-// that stole focus in a [FillError] focus-loss failure.
-type ElementRef struct {
-	// BackendNodeId is the element's stable backend node id.
-	BackendNodeId int32
+// FocusedElement is a lightweight descriptor of an element — enough to identify
+// it (and decide what to do) without another DOM round-trip. It names the
+// element that stole focus in a [FillError] focus-loss failure.
+type FocusedElement struct {
+	// Ref names the element, ready to pass to an action such as [Page.Click].
+	// Nil when it could not be named.
+	Ref *Locator
 	// TagName is the upper-case tag name, e.g. "INPUT", "BUTTON", "DIV".
 	TagName string
 	// Id is the id attribute, if present.
@@ -663,7 +759,9 @@ func (e *DragError) Error() string {
 // interface; recover with errors.As.
 type SelectOptionError struct {
 	// Code is "not_found" (the <select> was not located) or "option_not_found"
-	// (no option matched the requested index/value/text).
+	// (no option matched the requested index/value/text), or one of the codes
+	// about where the <select> was looked for: "container_not_found",
+	// "outside_scope", "stale_ref".
 	Code string
 	// Message is a human-readable description.
 	Message string
@@ -684,7 +782,8 @@ func (e *SelectOptionError) Error() string {
 // target could not be located/scrolled. Implements the error interface; recover
 // with errors.As.
 type ScrollError struct {
-	// Code is currently always "not_found".
+	// Code is "not_found", or one of the codes about where the target was
+	// looked for: "container_not_found", "outside_scope", "stale_ref".
 	Code string
 	// Message is a human-readable description.
 	Message string
@@ -705,7 +804,9 @@ func (e *ScrollError) Error() string {
 // could not be located. A move has no occlusion notion, so this is the only
 // semantic failure. Implements the error interface; recover with errors.As.
 type MoveError struct {
-	// Code is "not_found" or "page_not_focused".
+	// Code is "not_found" or "page_not_focused", or one of the codes about
+	// where the target was looked for: "container_not_found",
+	// "outside_scope", "stale_ref".
 	Code string
 	// Message is a human-readable description.
 	Message string
@@ -760,13 +861,15 @@ func (e *SolveCaptchaError) Error() string {
 // DragResult is the outcome of a [CloudBrowser.Drag] gesture: the resolved
 // source element and the start/end coordinates of the performed drag.
 type DragResult struct {
-	Success       bool
-	FrameId       string
-	BackendNodeId int32
-	StartX        float64
-	StartY        float64
-	EndX          float64
-	EndY          float64
+	Success bool
+	// Ref names the dragged element, and Frame the frame it was found in; as
+	// in [ElementResult].
+	Ref    *Locator
+	Frame  FrameRef
+	StartX float64
+	StartY float64
+	EndX   float64
+	EndY   float64
 	// Captchas lists the captcha solves that held the drag, in order. Nil if
 	// none did.
 	Captchas []CaptchaInterruption
@@ -782,6 +885,10 @@ type SelectOptionResult struct {
 	SelectedIndex int32
 	SelectedValue string
 	SelectedText  string
+	// Ref names the <select>, and Frame the frame it was found in; as in
+	// [ElementResult].
+	Ref   *Locator
+	Frame FrameRef
 }
 
 // ObservationOpts customizes a [Page.GetObservationWith] call.
@@ -805,28 +912,35 @@ type ObservationOpts struct {
 	// MaxTotalTokens budgets the whole page in estimated tokens rather than
 	// characters, because the same character count is worth roughly four times
 	// as many tokens in CJK text as in ASCII. 0 = server default (8000). Frames
-	// are visited in tree order and each gets whatever is left.
+	// are visited in tree order and each gets whatever is left. A reserve on
+	// top of the budget, a quarter of it and at most 2000 tokens, is kept for
+	// child frames, so a long main document does not push out the consent or
+	// payment frame further down.
+	//
+	// The budget is where a frame starts leaving things out, not the size of
+	// the result: from a "# budget spent" line on, the frame lists only what
+	// can be acted on, with its headings. A result can therefore come to about
+	// twice this value.
 	MaxTotalTokens int32
 
 	// IncludeBounds adds bounds="x,y,w,h" to every row. Off by default; bounds
 	// cost about as much as the rest of a row and are rarely needed, since
-	// elements are addressed by backendNodeId.
+	// elements are addressed by their reference.
 	IncludeBounds bool
 
 	// ViewportOnly limits the walk to elements intersecting the frame's current
 	// viewport. Off by default.
 	ViewportOnly bool
 
-	// Subtree scope — set exactly one of BackendNodeId, Selector or
-	// JSExpression to observe only that element's subtree (follow-up looks at a
-	// form then cost the form, not the ads around it). Omit all three for the
-	// whole page. Child iframes reached inside the scope are still visited.
-	BackendNodeId int32
-	Selector      string
-	JSExpression  string
-	// InFrame looks up the scope root: empty = main frame, a frameId, or
-	// [AllFrames]. Ignored when observing the whole page.
-	InFrame string
+	// Scope observes only part of the page, so a follow-up look at a form
+	// costs the form and not the ads around it. Nil is the whole page.
+	//
+	// An element locator ([CSS], [JS] or a reference) scopes to that element's
+	// subtree; like any locator it can be confined with [Locator.In]. A frame
+	// ([FrameURL], [FrameName], [FrameByID], [MainFrame]) scopes to that
+	// frame's document. Child iframes reached inside the scope are still
+	// visited.
+	Scope *Locator
 }
 
 // ScreenshotResult is a single captured image of the page, returned by
@@ -844,18 +958,28 @@ type ScreenshotResult struct {
 // reports whether the canvas was untainted (informational; the read succeeds
 // either way).
 type ReadCanvasResult struct {
-	Success       bool
-	FrameId       string
-	BackendNodeId int32
-	DataBase64    string
-	Width         int32
-	Height        int32
-	OriginClean   bool
+	Success bool
+	// Ref names the canvas that was read, and Frame the frame it was found
+	// in; as in [ElementResult].
+	Ref         *Locator
+	Frame       FrameRef
+	DataBase64  string
+	Width       int32
+	Height      int32
+	OriginClean bool
 }
 
 // InspectResult describes the topmost element hit at viewport-relative
-// (x, y). BackendNodeId == 0 means nothing was found at that position.
+// (x, y). A nil Ref (and BackendNodeId == 0) means nothing was found at that
+// position.
 type InspectResult struct {
+	// Ref names the element, ready to pass to an action or to [Locator.In],
+	// and Frame is the frame it lives in.
+	Ref   *Locator
+	Frame FrameRef
+	// BackendNodeId and FrameId are the same element as the DOM mirror
+	// addresses it ([DomMirror.Node], [DomMirror.Reveal],
+	// [Page.HighlightNode]).
 	BackendNodeId int32
 	FrameId       string
 	TagName       string

@@ -30,6 +30,7 @@ func frameInfoFromProto(f *generated.FrameInfo) *FrameInfo {
 	out := &FrameInfo{
 		FrameId:      f.FrameId,
 		Url:          f.Url,
+		Name:         f.Name,
 		IsOOPIF:      f.IsOopif,
 		HasJSContext: f.HasJsContext,
 		IsLoading:    f.IsLoading,
@@ -270,15 +271,15 @@ func waitResultFromProto(r *generated.WaitResult) (*WaitResult, *WaitError) {
 	}
 	if e := r.Element; e != nil {
 		res.Element = &WaitElement{
-			FrameId:       e.FrameId,
-			BackendNodeId: e.BackendNodeId,
+			Ref:           refLocator(e.Ref, e.Frame),
+			Frame:         frameRefFromProto(e.Frame),
 			IsVisible:     e.IsVisible,
 			Bounds:        rectFromProto(e.Bounds),
 			SelectorMatch: selectorMatchFromProto(e.SelectorMatch),
 		}
 	}
 	if c := r.Captcha; c != nil {
-		res.Captcha = &WaitCaptcha{Kind: c.Kind, FrameId: c.FrameId}
+		res.Captcha = &WaitCaptcha{Kind: c.Kind, Frame: frameRefFromProto(c.Frame)}
 	}
 	if r.Error == nil {
 		return res, nil
@@ -307,8 +308,9 @@ func waitConditionStatusFromProto(c *generated.WaitConditionStatus) WaitConditio
 	out := WaitConditionStatus{
 		Index:         c.Index,
 		State:         c.State,
-		BackendNodeId: c.BackendNodeId,
+		Ref:           refLocatorIn(c.Ref, c.FrameId),
 		FrameId:       c.FrameId,
+		ScopeError:    c.GetScopeError(),
 		IsVisible:     c.IsVisible,
 		Occluder:      occluderInfoFromProto(c.Occluder),
 		SelectorMatch: selectorMatchFromProto(c.SelectorMatch),
@@ -332,13 +334,13 @@ func elementResultFromProto(r *generated.ElementResult) *ElementResult {
 		return nil
 	}
 	return &ElementResult{
-		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
-		IsVisible:     r.IsVisible,
-		Bounds:        rectFromProto(r.Bounds),
-		RootX:         r.RootX,
-		RootY:         r.RootY,
+		Success:   r.Success,
+		Ref:       refLocator(r.Ref, r.Frame),
+		Frame:     frameRefFromProto(r.Frame),
+		IsVisible: r.IsVisible,
+		Bounds:    rectFromProto(r.Bounds),
+		RootX:     r.RootX,
+		RootY:     r.RootY,
 	}
 }
 
@@ -352,8 +354,8 @@ func clickResultFromProto(r *generated.ClickResult) (*ElementResult, *ClickError
 	}
 	res := &ElementResult{
 		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 		IsVisible:     r.IsVisible,
 		Bounds:        rectFromProto(r.Bounds),
 		RootX:         r.RootX,
@@ -406,8 +408,8 @@ func fillResultFromProto(r *generated.FillResult) (*ElementResult, *FillError) {
 	}
 	res := &ElementResult{
 		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 		RootX:         r.RootX,
 		RootY:         r.RootY,
 		Captchas:      captchaInterruptionsFromProto(r.Captchas),
@@ -428,7 +430,7 @@ func fillErrorFromProto(e *generated.FillError) *FillError {
 		Message:              e.Message,
 		ClickError:           clickErrorFromProto(e.ClickError),
 		FocusedBackendNodeId: e.GetFocusedBackendNodeId(),
-		FocusedElement:       elementRefFromProto(e.FocusedElement),
+		FocusedElement:       focusedElementFromProto(e.FocusedElement),
 	}
 	if e.TargetEditable != nil {
 		v := e.GetTargetEditable()
@@ -441,20 +443,27 @@ func fillErrorFromProto(e *generated.FillError) *FillError {
 	return fe
 }
 
-func elementRefFromProto(e *generated.ElementRef) *ElementRef {
+func focusedElementFromProto(e *generated.ElementRef) *FocusedElement {
 	if e == nil {
 		return nil
 	}
-	return &ElementRef{
-		BackendNodeId: e.BackendNodeId,
-		TagName:       e.TagName,
-		Id:            e.GetId(),
-		Name:          e.GetName(),
-		ClassName:     e.GetClassName(),
-		InputType:     e.GetInputType(),
-		Text:          e.GetText(),
-		Editable:      e.Editable,
+	return &FocusedElement{
+		Ref:       refLocatorIn(e.Ref, ""),
+		TagName:   e.TagName,
+		Id:        e.GetId(),
+		Name:      e.GetName(),
+		ClassName: e.GetClassName(),
+		InputType: e.GetInputType(),
+		Text:      e.GetText(),
+		Editable:  e.Editable,
 	}
+}
+
+func frameRefFromProto(f *generated.FrameRef) FrameRef {
+	if f == nil {
+		return FrameRef{}
+	}
+	return FrameRef{ID: f.FrameId, URL: f.Url, Main: f.Main}
 }
 
 func occluderInfoFromProto(o *generated.OccluderInfo) *OccluderInfo {
@@ -462,7 +471,7 @@ func occluderInfoFromProto(o *generated.OccluderInfo) *OccluderInfo {
 		return nil
 	}
 	return &OccluderInfo{
-		BackendNodeId:          o.BackendNodeId,
+		Ref:                    refLocatorIn(o.Ref, o.FrameId),
 		FrameId:                o.FrameId,
 		TagName:                o.TagName,
 		Id:                     o.GetId(),
@@ -487,8 +496,8 @@ func dragResultFromProto(r *generated.DragResult) (*DragResult, *DragError) {
 	}
 	res := &DragResult{
 		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 		StartX:        r.StartX,
 		StartY:        r.StartY,
 		EndX:          r.EndX,
@@ -515,8 +524,8 @@ func scrollResultFromProto(r *generated.ScrollResult) (*ElementResult, *ScrollEr
 	}
 	res := &ElementResult{
 		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 		IsVisible:     r.IsVisible,
 		Bounds:        rectFromProto(r.Bounds),
 		SelectorMatch: selectorMatchFromProto(r.SelectorMatch),
@@ -536,8 +545,8 @@ func moveResultFromProto(r *generated.MoveResult) (*ElementResult, *MoveError) {
 	}
 	res := &ElementResult{
 		Success:       r.Success,
-		FrameId:       r.FrameId,
-		BackendNodeId: r.BackendNodeId,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 		IsVisible:     r.IsVisible,
 		Bounds:        rectFromProto(r.Bounds),
 		RootX:         r.RootX,
@@ -562,6 +571,8 @@ func selectOptionResultFromProto(r *generated.SelectOptionResult) (*SelectOption
 		SelectedIndex: r.SelectedIndex,
 		SelectedValue: r.SelectedValue,
 		SelectedText:  r.SelectedText,
+		Ref:           refLocator(r.Ref, r.Frame),
+		Frame:         frameRefFromProto(r.Frame),
 	}
 	if r.Error == nil {
 		return res, nil

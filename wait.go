@@ -16,14 +16,13 @@ type WaitArg interface{ applyWait(*waitCall) }
 type waitCall struct {
 	conditions []waitCondition
 	timeout    float64
-	frameId    string
 }
 
 // waitCondition is one entry of a Wait call, in argument order. Exactly one
 // field is set.
 type waitCondition struct {
 	locator  *Locator
-	captcha  bool
+	captcha  *CaptchaCondition
 	request  *RequestCondition
 	response *ResponseCondition
 }
@@ -38,10 +37,32 @@ func (l *Locator) applyWait(w *waitCall) {
 
 // CaptchaCondition is the wait condition built by [Captcha]. It is accepted
 // by [Page.Wait] only — it is not a [Locator], so no element action takes it.
-type CaptchaCondition struct{}
+type CaptchaCondition struct {
+	in *Locator
+}
 
 func (c *CaptchaCondition) applyWait(w *waitCall) {
-	w.conditions = append(w.conditions, waitCondition{captcha: true})
+	w.conditions = append(w.conditions, waitCondition{captcha: c})
+}
+
+// In confines the captcha condition to a container, the way [Locator.In] does
+// for an element: only a challenge inside that frame or element counts.
+// Without it, a challenge anywhere on the page does.
+//
+// @param container - where to look
+//
+// @returns a new *CaptchaCondition confined to the container
+//
+// @example
+//
+//	// Only a challenge in the checkout frame, not the one in the chat widget.
+//	checkout := browserscale.FrameURL("*checkout.example.com/*")
+//	_, _ = page.Wait(ctx, browserscale.Captcha().In(checkout))
+func (c *CaptchaCondition) In(container *Locator) *CaptchaCondition {
+	if c == nil {
+		return &CaptchaCondition{in: wrapIn(nil, container)}
+	}
+	return &CaptchaCondition{in: wrapIn(c.in, container)}
 }
 
 // Captcha matches as soon as a supported captcha or bot-protection challenge
@@ -50,12 +71,12 @@ func (c *CaptchaCondition) applyWait(w *waitCall) {
 //
 // It is a state, like [CSS]: a challenge that is already showing matches at
 // once. On a match the result's Kind is [WaitKindCaptcha] and its Captcha
-// names the kind of challenge; hand the page to [Page.SolveCaptcha] to solve
-// it.
+// names the kind of challenge and the frame it sits in; hand the page to
+// [Page.SolveCaptcha] to solve it.
 //
-// Most challenges live in an iframe, so a wait containing Captcha searches
-// every frame — its element conditions included — unless a locator pins a
-// frame with [Locator.InFrame], which then scopes the captcha too.
+// Most challenges live in an iframe, so the condition looks at the whole
+// page, every frame included. That is its own scope: the other conditions of
+// the same wait keep theirs. Use [CaptchaCondition.In] to confine it.
 //
 // @returns *CaptchaCondition usable only as a [Page.Wait] condition
 //
@@ -204,6 +225,12 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 // page, so start it before the action that should trigger the event — run it
 // in a goroutine alongside Click, SolveCaptcha or Navigate.
 //
+// Every condition looks where its own locator says, whatever the others say:
+// a [CSS] condition on the whole page with every frame, a [JS] condition in
+// the main document, and either one inside the container given with
+// [Locator.In]. A condition inside a frame that is not there yet waits for
+// the frame as well. The result names the frame the match was found in.
+//
 // Anything left unset is defaulted by the API, not by this SDK:
 //   - timeout: 30s — override with [Timeout]
 //   - per-locator visible and steady: visibility required, 500ms of settling.
@@ -211,8 +238,8 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 //     object) both are no-ops. Override with [Locator.Visible] /
 //     [Locator.Steady] on individual locators.
 //
-// [Node] and [At] are not valid wait conditions — they only make sense as
-// action targets — and produce an error at send time.
+// A reference and [At] are not valid wait conditions — they only make sense
+// as action targets — and produce an error at send time.
 //
 // @param args - one or more conditions plus optional wait-level options;
 //
@@ -225,7 +252,8 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 // If no condition matched before the timeout, err is a [*WaitError] carrying
 // the failure code and a per-condition breakdown (Conditions) of why each
 // never matched — e.g. "found_occluded" with the intercepting element, or
-// "not_seen" for a request that never happened. The *WaitResult is still
+// "not_seen" for a request that never happened, or a ScopeError naming the
+// container that was never there. The *WaitResult is still
 // returned (with Index -1). Recover the detail with errors.As. A malformed
 // call (no conditions, or an invalid condition) returns an ordinary error
 // instead.
@@ -246,12 +274,23 @@ func Timeout(ms float64) WaitArg { return waitOpt(func(w *waitCall) { w.timeout 
 //	}
 //	switch res.Kind {
 //	case browserscale.WaitKindElement:
-//	    _, _ = page.Click(ctx, browserscale.Node(res.Element.BackendNodeId).InFrame(res.Element.FrameId))
+//	    _, _ = page.Click(ctx, res.Element.Ref)
 //	case browserscale.WaitKindCaptcha:
 //	    _, _ = page.SolveCaptcha(ctx, 0, 2)
 //	case browserscale.WaitKindRequest:
 //	    log.Println("failed:", res.Request.Url)
 //	}
+//
+// @example
+//
+//	// Each condition with its own place to look.
+//	pay := browserscale.CSS("iframe[title='Secure payment']")
+//	res, err := page.Wait(ctx,
+//	    browserscale.CSS("#order-confirmed"),                 // whole page
+//	    browserscale.CSS(".card-error").In(pay),              // only the payment frame
+//	    browserscale.JS("location.pathname === '/declined'"), // the top document
+//	    browserscale.Captcha(),                               // whole page
+//	)
 //
 // @example
 //
@@ -285,11 +324,6 @@ func (p *Page) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, error) {
 		if err != nil {
 			return nil, err
 		}
-		// If no call-level frameId was set, fall back to the first locator's
-		// frameId. Captcha / request / response conditions have no frame.
-		if l := cond.locator; l != nil && wc.frameId == "" && l.frameId != "" {
-			wc.frameId = l.frameId
-		}
 		pbConds[i] = pc
 	}
 
@@ -299,10 +333,6 @@ func (p *Page) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, error) {
 		ApiKey:     p.apiKey,
 		Conditions: pbConds,
 		Timeout:    floatPtrIfNonZero(wc.timeout),
-	}
-	if wc.frameId != "" {
-		fid := wc.frameId
-		req.FrameId = &fid
 	}
 
 	resp, err := p.client.WaitForAny(ctx, req)
@@ -321,8 +351,13 @@ func (p *Page) Wait(ctx context.Context, args ...WaitArg) (*WaitResult, error) {
 
 func (c waitCondition) toProto(i int) (*generated.WaitCondition, error) {
 	switch {
-	case c.captcha:
-		return &generated.WaitCondition{Captcha: true}, nil
+	case c.captcha != nil:
+		for in := c.captcha.in; in != nil; in = in.in {
+			if err := in.validateContainer("Wait"); err != nil {
+				return nil, fmt.Errorf("%w (condition %d)", err, i)
+			}
+		}
+		return &generated.WaitCondition{Captcha: true, In: c.captcha.in.chainWithSelf()}, nil
 	case c.request != nil:
 		if c.request.urlPattern == "" {
 			return nil, fmt.Errorf("browserscale.Wait: condition %d: Request needs a URL pattern", i)
@@ -340,9 +375,12 @@ func (c waitCondition) toProto(i int) (*generated.WaitCondition, error) {
 	}
 	l := c.locator
 	if l == nil || (l.selector == "" && l.jsExpression == "") {
-		return nil, fmt.Errorf("browserscale.Wait: condition %d has neither selector nor JS expression (Node()/At() are not valid wait conditions)", i)
+		return nil, fmt.Errorf("browserscale.Wait: condition %d has neither selector nor JS expression (a reference, a frame or At() is not a wait condition; put a CSS or JS locator in the frame with In)", i)
 	}
-	pc := &generated.WaitCondition{}
+	if err := l.validateChain("Wait"); err != nil {
+		return nil, fmt.Errorf("%w (condition %d)", err, i)
+	}
+	pc := &generated.WaitCondition{In: l.chain()}
 	if l.selector != "" {
 		s := l.selector
 		pc.Selector = &s

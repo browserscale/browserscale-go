@@ -9,11 +9,6 @@ import (
 // ReadCanvasOpts customizes a [Page.ReadCanvasWith] call.
 // Zero/empty values mean "use the server default".
 type ReadCanvasOpts struct {
-	// InFrame overrides the locator's own frame.
-	// Empty = use the locator's frame (or the main frame if none).
-	// Pass a specific frameId, or [AllFrames], to search elsewhere.
-	InFrame string
-
 	// Format is the output encoding.
 	// "" or "png" (default), "jpeg", "webp", or "rgba" for the raw
 	// unpremultiplied RGBA pixel buffer.
@@ -33,14 +28,20 @@ type ReadCanvasOpts struct {
 // page JavaScript — so cross-origin/tainted canvases (common in captchas) read
 // fine where a normal toDataURL / getImageData would throw a SecurityError.
 //
-// @param target - locator for the <canvas>; [CSS], [JS] or [Node]
+// @param target - locator for the <canvas>; [CSS], [JS] or a reference
 //
 //	([At] coordinates are not valid — a real element is required)
 //
 // @returns *ReadCanvasResult with the base64 image in DataBase64, the canvas
 //
-//	Width/Height, resolved frameId/backendNodeId and the OriginClean flag
+//	Width/Height, the canvas's Ref and Frame and the OriginClean flag
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator
 // @throws not_element - the expression was truthy but did not yield an element
 // @throws not_readable - the target was found but is not a readable canvas
@@ -67,7 +68,7 @@ func (p *Page) ReadCanvas(ctx context.Context, target *Locator) (*ReadCanvasResu
 // ReadCanvasWith is the customizable variant of [Page.ReadCanvas].
 //
 // @inheritDoc [Page.ReadCanvas]
-// @param opts - format, quality, sub-rectangle and frame override; see [ReadCanvasOpts]
+// @param opts - format, quality, and sub-rectangle; see [ReadCanvasOpts]
 //
 // @example
 //
@@ -85,15 +86,15 @@ func (p *Page) readCanvasWith(ctx context.Context, target *Locator, o ReadCanvas
 	}
 
 	req := &generated.ReadCanvasRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame(o.InFrame, target),
-		Format:        strPtr(o.Format),
-		Quality:       intPtr(o.Quality),
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
+		Format:       strPtr(o.Format),
+		Quality:      intPtr(o.Quality),
 	}
 	if o.SW > 0 && o.SH > 0 {
 		req.Sx = intPtr(o.SX)
@@ -107,13 +108,16 @@ func (p *Page) readCanvasWith(ctx context.Context, target *Locator, o ReadCanvas
 		return nil, err
 	}
 	out := &ReadCanvasResult{
-		Success:       resp.Success,
-		FrameId:       resp.FrameId,
-		BackendNodeId: resp.BackendNodeId,
-		DataBase64:    resp.DataBase64,
-		Width:         resp.Width,
-		Height:        resp.Height,
-		OriginClean:   resp.OriginClean,
+		Success:     resp.Success,
+		Ref:         refLocator(resp.Ref, resp.Frame),
+		Frame:       frameRefFromProto(resp.Frame),
+		DataBase64:  resp.DataBase64,
+		Width:       resp.Width,
+		Height:      resp.Height,
+		OriginClean: resp.OriginClean,
 	}
-	return out, commandErrorFrom("readCanvas", resp.GetError())
+	if e := commandErrorFrom("readCanvas", resp.GetError()); e != nil {
+		return out, p.checked(ctx, target, e)
+	}
+	return out, nil
 }

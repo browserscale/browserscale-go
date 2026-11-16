@@ -9,11 +9,6 @@ import (
 // SelectOpts customizes a SelectByXxxWith call.
 // Zero/empty values mean "use the server default".
 type SelectOpts struct {
-	// InFrame overrides the locator's own frame.
-	// Empty = use the locator's frame (or the main frame if none).
-	// Pass a specific frameId, or [AllFrames], to search elsewhere.
-	InFrame string
-
 	// NoEvents picks the option silently without firing input/change
 	// events. Default (false) fires the standard events.
 	NoEvents bool
@@ -36,6 +31,12 @@ type SelectOpts struct {
 //
 //	selectedValue and selectedText after the change
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - the <select> element could not be located
 // @throws option_not_found - the <select> was found but no option matched, so the
 // index is out of range or the element is not a <select> at all
@@ -151,13 +152,13 @@ func (p *Page) runSelect(ctx context.Context, target *Locator, o SelectOpts, wit
 		return nil, err
 	}
 	req := &generated.SelectOptionRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame(o.InFrame, target),
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
 	}
 	withKey(req)
 	if o.NoEvents {
@@ -173,7 +174,7 @@ func (p *Page) runSelect(ctx context.Context, target *Locator, o SelectOpts, wit
 	// *SelectOptionError.
 	res, selErr := selectOptionResultFromProto(resp)
 	if selErr != nil {
-		return res, selErr
+		return res, p.checked(ctx, target, selErr)
 	}
 	return res, nil
 }

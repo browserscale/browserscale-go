@@ -2,6 +2,7 @@ package browserscale
 
 import (
 	"context"
+	"errors"
 
 	"github.com/browserscale/browserscale-go/generated"
 )
@@ -59,9 +60,10 @@ func (p *Page) GetDOMHash(ctx context.Context, frameId string) (string, error) {
 // @param x - viewport-relative x in CSS pixels
 // @param y - viewport-relative y in CSS pixels
 //
-// @returns *InspectResult with the resolved backendNodeId, frameId, tag
+// @returns *InspectResult with the element's Ref and Frame, its address in
 //
-//	name, trimmed textContent, visibility and bounds
+//	the DOM mirror (BackendNodeId, FrameId), tag name, trimmed textContent,
+//	visibility and bounds
 //
 // Reports only transport failures - a dead session, a page that is gone, a
 // broken connection. This call has no semantic failure of its own, so there are
@@ -74,6 +76,9 @@ func (p *Page) GetDOMHash(ctx context.Context, frameId string) (string, error) {
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(res.TagName, res.TextContent)
+//	if res.Ref != nil {
+//	    _, _ = page.Click(ctx, res.Ref) // act on what is under the point
+//	}
 func (p *Page) InspectAtPosition(ctx context.Context, x, y float64) (*InspectResult, error) {
 	resp, err := p.client.InspectAtPosition(ctx, &generated.InspectAtPositionRequest{
 		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
@@ -87,6 +92,8 @@ func (p *Page) InspectAtPosition(ctx context.Context, x, y float64) (*InspectRes
 		return nil, e
 	}
 	return &InspectResult{
+		Ref:           refLocator(resp.Ref, resp.Frame),
+		Frame:         frameRefFromProto(resp.Frame),
 		BackendNodeId: resp.BackendNodeId,
 		FrameId:       resp.FrameId,
 		TagName:       resp.TagName,
@@ -96,11 +103,94 @@ func (p *Page) InspectAtPosition(ctx context.Context, x, y float64) (*InspectRes
 	}, nil
 }
 
-// HighlightNode paints a debug overlay over the node identified by
-// backendNodeId.
+// Highlight paints a debug overlay over the element a reference names.
 //
-// Useful for visual debugging of agent flows — the overlay stays until the
-// next call. Pass backendNodeId <= 0 to clear any current highlights.
+// Useful for visual debugging of agent flows: mark what a wait found or what
+// a click is about to hit. At most one element is marked on the whole page;
+// the overlay stays until the next call. Pass nil to clear it. The overlay is
+// drawn by the browser, not by the page: it changes nothing in the document
+// and scripts cannot see it.
+//
+// @param ref - the Ref of a result (or [Ref] for one read from an
+// observation); nil clears the highlight
+//
+// @throws [StaleRefError] - the reference's element is gone
+//
+// @example
+//
+//	res, _ := page.Wait(ctx, browserscale.CSS("button.submit"))
+//	if err := page.Highlight(ctx, res.Element.Ref); err != nil {
+//	    log.Fatal(err)
+//	}
+func (p *Page) Highlight(ctx context.Context, ref *Locator) error {
+	req := &generated.HighlightNodeRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
+	}
+	if ref != nil {
+		if ref.ref == "" {
+			return errors.New("browserscale.Highlight: takes the Ref of a result (or nil to clear); look the element up with Wait first")
+		}
+		req.Ref = strPtr(ref.ref)
+	}
+	resp, err := p.client.HighlightNode(ctx, req)
+	if err != nil {
+		return err
+	}
+	if e := commandErrorFrom("highlight", resp.GetError()); e != nil {
+		return p.checked(ctx, ref, e)
+	}
+	return nil
+}
+
+// NodeRef turns the address of a DOM mirror node into a reference that
+// [Page.Click], [Page.Fill] and every other call with a target takes.
+//
+// The mirror ([Page.MirrorDom]) and [Page.GetDOM] name a node by its
+// backendNodeId and the frame it lives in. Actions take a reference instead,
+// which also names the document, so that a node id can never be mistaken for
+// a node of whatever the frame shows next. This is the bridge between the
+// two: the reference names the node in the document its frame shows now.
+// Whether the node still exists is not checked here; a reference made from an
+// outdated id fails with a [*StaleRefError] when it is used.
+//
+// @param backendNodeId - the node's DomNode.BackendNodeId
+// @param frameId - the node's DomNode.FrameId; empty is the main frame
+//
+// @returns *Locator naming the node, usable as a target or a container
+//
+// @throws not_found - the frame is not on the page any more
+//
+// @see [CommandError] for recovering the code with errors.As
+// @see [DomMirror.Locator] for the same from a mirror node
+//
+// @example
+//
+//	button, err := page.NodeRef(ctx, node.BackendNodeId, node.FrameId)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	_, _ = page.Click(ctx, button)
+func (p *Page) NodeRef(ctx context.Context, backendNodeId int32, frameId string) (*Locator, error) {
+	resp, err := p.client.GetNodeRef(ctx, &generated.GetNodeRefRequest{
+		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
+		BackendNodeId: backendNodeId,
+		FrameId:       strPtr(frameId),
+	})
+	if err != nil {
+		return nil, err
+	}
+	if e := commandErrorFrom("nodeRef", resp.GetError()); e != nil {
+		return nil, e
+	}
+	return refLocator(resp.GetRef(), resp.GetFrame()), nil
+}
+
+// HighlightNode paints a debug overlay over a node of the DOM mirror,
+// identified the way the mirror identifies it: by backendNodeId and frame.
+// For an element a result named, use [Page.Highlight] with its Ref.
+//
+// The overlay stays until the next call. Pass backendNodeId <= 0 to clear any
+// current highlights.
 //
 // @param backendNodeId - id of the node to highlight, or <= 0 to clear
 // @param frameId - id of the frame the node lives in; empty targets the main frame
@@ -111,7 +201,7 @@ func (p *Page) InspectAtPosition(ctx context.Context, x, y float64) (*InspectRes
 //
 // @example
 //
-//	if err := page.HighlightNode(ctx, res.BackendNodeId, res.FrameId); err != nil {
+//	if err := page.HighlightNode(ctx, node.BackendNodeId, node.FrameId); err != nil {
 //	    log.Fatal(err)
 //	}
 func (p *Page) HighlightNode(ctx context.Context, backendNodeId int32, frameId string) error {

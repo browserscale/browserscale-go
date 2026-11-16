@@ -14,11 +14,17 @@ import (
 //
 // @param target - locator describing where to move; [At] is also valid
 //
-// @returns *ElementResult with the resolved frameId, backendNodeId,
+// @returns *ElementResult with the the element's Ref and Frame,
 //
 //	post-scroll isVisible, element bounds and the root-viewport (rootX, rootY)
 //	where the cursor ended up
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator, so there was nowhere to
 // move the cursor. The only semantic failure this call has: once the target is
 // located, moving to it cannot be refused
@@ -37,15 +43,15 @@ func (p *Page) MoveTo(ctx context.Context, target *Locator) (*ElementResult, err
 	}
 
 	resp, err := p.client.MoveTo(ctx, &generated.MoveToRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame("", target),
-		X:             target.x,
-		Y:             target.y,
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
+		X:            target.x,
+		Y:            target.y,
 	})
 	if err != nil {
 		return nil, err
@@ -55,7 +61,7 @@ func (p *Page) MoveTo(ctx context.Context, target *Locator) (*ElementResult, err
 	// *MoveError.
 	res, moveErr := moveResultFromProto(resp)
 	if moveErr != nil {
-		return res, p.notFocused(moveErr)
+		return res, p.checked(ctx, target, moveErr)
 	}
 	return res, nil
 }

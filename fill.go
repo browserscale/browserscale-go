@@ -9,11 +9,6 @@ import (
 // FillOpts customizes a [Page.FillWith] call.
 // Zero/empty values mean "use the server default".
 type FillOpts struct {
-	// InFrame overrides the locator's own frame.
-	// Empty = use the locator's frame (or the main frame if none).
-	// Pass a specific frameId, or [AllFrames], to search elsewhere.
-	InFrame string
-
 	// ClearFirst, when true, wipes the field's existing content with
 	// Ctrl+A, Delete before typing. Default (false) appends to whatever
 	// is already there.
@@ -61,7 +56,7 @@ type FillOpts struct {
 // @param target - locator describing the input element
 // @param text - text to type into the element
 //
-// @returns *ElementResult with success, resolved frameId, backendNodeId
+// @returns *ElementResult with success, the element's Ref and Frame
 //
 //	and the root-viewport (rootX, rootY) where the element was clicked
 //
@@ -71,6 +66,12 @@ type FillOpts struct {
 // *ElementResult is still returned (with Success=false). Recover the detail
 // with errors.As.
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator, or it could not be scrolled
 // into view
 // @throws not_visible - the field was found but cannot be seen, e.g. it sits in
@@ -132,14 +133,14 @@ func (p *Page) fillWith(ctx context.Context, target *Locator, text string, o Fil
 	}
 
 	req := &generated.FillRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame(o.InFrame, target),
-		Text:          text,
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
+		Text:         text,
 	}
 	if o.ClearFirst {
 		t := true
@@ -157,7 +158,7 @@ func (p *Page) fillWith(ctx context.Context, target *Locator, text string, o Fil
 	// *FillError so the res, err shape stays identical to the other actions.
 	res, fillErr := fillResultFromProto(resp)
 	if fillErr != nil {
-		return res, p.notFocused(fillErr)
+		return res, p.checked(ctx, target, fillErr)
 	}
 	return res, nil
 }

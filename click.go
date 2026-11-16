@@ -9,11 +9,6 @@ import (
 // ClickOpts customizes a [Page.ClickWith] call.
 // Zero/empty values mean "use the server default".
 type ClickOpts struct {
-	// InFrame overrides the locator's own frame.
-	// Empty = use the locator's frame (or the main frame if none).
-	// Pass a specific frameId, or [AllFrames], to search elsewhere.
-	InFrame string
-
 	// Button is the mouse button to use.
 	// Valid: "left" (default), "right", "middle".
 	Button string
@@ -49,7 +44,7 @@ type ClickOpts struct {
 //
 // @param target - locator describing what to click; [At] is also valid
 //
-// @returns *ElementResult with success, resolved frameId, backendNodeId,
+// @returns *ElementResult with success, the element's Ref and Frame,
 //
 //	post-scroll isVisible, element bounds and the root-viewport (rootX, rootY)
 //	where the click landed
@@ -60,6 +55,12 @@ type ClickOpts struct {
 // Success=false) so callers can read the resolved coordinates. Recover the
 // detail with errors.As.
 //
+// @throws container_not_found - a container given with [Locator.In] is not on
+// the page; the message names the link of the chain that was missing
+// @throws outside_scope - a [JS] target returned an element outside the element
+// it was confined to with [Locator.In]
+// @throws [StaleRefError] - the target or a container is a reference whose
+// element is gone (code "stale_ref")
 // @throws not_found - no element matched the locator, or it could not be scrolled
 // into view
 // @throws not_visible - the target was found but cannot be seen (not rendered,
@@ -80,7 +81,7 @@ type ClickOpts struct {
 // @see [ClickError] for the occlusion-failure detail
 // @see [Page.ClickWith] for right-click, double-click,
 //
-//	press/release-only, or frame override
+//	or press/release-only
 //
 // @example
 //
@@ -118,18 +119,18 @@ func (p *Page) clickWith(ctx context.Context, target *Locator, o ClickOpts) (*El
 	}
 
 	resp, err := p.client.Click(ctx, &generated.ClickRequest{
-		SessionId:     p.sessionId,
-		PageId:        p.id,
-		ApiKey:        p.apiKey,
-		Selector:      strPtr(target.selector),
-		JsExpression:  strPtr(target.jsExpression),
-		BackendNodeId: intPtr(target.backendNodeId),
-		FrameId:       pickFrame(o.InFrame, target),
-		X:             target.x,
-		Y:             target.y,
-		Button:        strPtr(o.Button),
-		ClickCount:    intPtr(o.ClickCount),
-		Action:        strPtr(o.Action),
+		SessionId:    p.sessionId,
+		PageId:       p.id,
+		ApiKey:       p.apiKey,
+		Ref:          strPtr(target.ref),
+		Selector:     strPtr(target.selector),
+		JsExpression: strPtr(target.jsExpression),
+		In:           target.chain(),
+		X:            target.x,
+		Y:            target.y,
+		Button:       strPtr(o.Button),
+		ClickCount:   intPtr(o.ClickCount),
+		Action:       strPtr(o.Action),
 	})
 	if err != nil {
 		return nil, err
@@ -139,7 +140,7 @@ func (p *Page) clickWith(ctx context.Context, target *Locator, o ClickOpts) (*El
 	// so the res, err shape stays identical to the other actions.
 	res, clickErr := clickResultFromProto(resp)
 	if clickErr != nil {
-		return res, p.notFocused(clickErr)
+		return res, p.checked(ctx, target, clickErr)
 	}
 	return res, nil
 }

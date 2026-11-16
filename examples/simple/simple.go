@@ -45,10 +45,11 @@ func main() {
 		return
 	}
 	el := wr.Element
-	fmt.Printf("wait matched index=%d frame=%s node=%d visible=%v bounds=%v\n",
-		wr.Index, el.FrameId, el.BackendNodeId, el.IsVisible, el.Bounds)
+	fmt.Printf("wait matched index=%d frame=%s (main=%v) visible=%v bounds=%v\n",
+		wr.Index, el.Frame.URL, el.Frame.Main, el.IsVisible, el.Bounds)
 
-	if _, err := page.Click(ctx, browserscale.Node(el.BackendNodeId).InFrame(el.FrameId)); err != nil {
+	// The wait's result names the element it found; click exactly that one.
+	if _, err := page.Click(ctx, el.Ref); err != nil {
 		fmt.Println("click:", err)
 		return
 	}

@@ -632,6 +632,30 @@ func (m *DomMirror) Node(frameId string, backendNodeId int32) *DomNode {
 	return m.nodes[domKey(frameId, backendNodeId)]
 }
 
+// Locator turns a mirror node into a reference that [Page.Click], [Page.Fill]
+// and every other call with a target takes: the way to act on a node picked
+// in the tree. See [Page.NodeRef], which this calls with the node's address.
+//
+// @param node - a node of this mirror
+//
+// @returns *Locator naming the node, usable as a target or a container
+//
+// @throws not_found - the node's frame is not on the page any more
+//
+// @example
+//
+//	button, err := mirror.Locator(ctx, node)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	_, _ = page.Click(ctx, button)
+func (m *DomMirror) Locator(ctx context.Context, node *DomNode) (*Locator, error) {
+	if node == nil {
+		return nil, errors.New("browserscale.DomMirror.Locator: a node is required")
+	}
+	return m.page.NodeRef(ctx, node.BackendNodeId, node.FrameId)
+}
+
 // IsExpanded reports whether this node's children are known. Changes inside a
 // node that is not expanded arrive only as an updated ChildNodeCount.
 func (m *DomMirror) IsExpanded(node *DomNode) bool {

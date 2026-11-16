@@ -63,6 +63,7 @@ const (
 	Browser_GetObservation_FullMethodName          = "/browserscale.v1.Browser/GetObservation"
 	Browser_InspectAtPosition_FullMethodName       = "/browserscale.v1.Browser/InspectAtPosition"
 	Browser_HighlightNode_FullMethodName           = "/browserscale.v1.Browser/HighlightNode"
+	Browser_GetNodeRef_FullMethodName              = "/browserscale.v1.Browser/GetNodeRef"
 	Browser_StartDomMirror_FullMethodName          = "/browserscale.v1.Browser/StartDomMirror"
 	Browser_StopDomMirror_FullMethodName           = "/browserscale.v1.Browser/StopDomMirror"
 	Browser_GetDomChildren_FullMethodName          = "/browserscale.v1.Browser/GetDomChildren"
@@ -176,6 +177,7 @@ type BrowserClient interface {
 	GetObservation(ctx context.Context, in *GetObservationRequest, opts ...grpc.CallOption) (*GetObservationResponse, error)
 	InspectAtPosition(ctx context.Context, in *InspectAtPositionRequest, opts ...grpc.CallOption) (*InspectAtPositionResponse, error)
 	HighlightNode(ctx context.Context, in *HighlightNodeRequest, opts ...grpc.CallOption) (*CommandResult, error)
+	GetNodeRef(ctx context.Context, in *GetNodeRefRequest, opts ...grpc.CallOption) (*GetNodeRefResponse, error)
 	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
 	// StartDomMirror returns the top of the main document and from then on the
 	// browser reports changes to the part the client has actually expanded; the
@@ -737,6 +739,16 @@ func (c *browserClient) HighlightNode(ctx context.Context, in *HighlightNodeRequ
 	return out, nil
 }
 
+func (c *browserClient) GetNodeRef(ctx context.Context, in *GetNodeRefRequest, opts ...grpc.CallOption) (*GetNodeRefResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetNodeRefResponse)
+	err := c.cc.Invoke(ctx, Browser_GetNodeRef_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *browserClient) StartDomMirror(ctx context.Context, in *StartDomMirrorRequest, opts ...grpc.CallOption) (*StartDomMirrorResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(StartDomMirrorResponse)
@@ -1091,6 +1103,7 @@ type BrowserServer interface {
 	GetObservation(context.Context, *GetObservationRequest) (*GetObservationResponse, error)
 	InspectAtPosition(context.Context, *InspectAtPositionRequest) (*InspectAtPositionResponse, error)
 	HighlightNode(context.Context, *HighlightNodeRequest) (*CommandResult, error)
+	GetNodeRef(context.Context, *GetNodeRefRequest) (*GetNodeRefResponse, error)
 	// DOM mirror — an incremental view of the page's DOM, as ONE tree.
 	// StartDomMirror returns the top of the main document and from then on the
 	// browser reports changes to the part the client has actually expanded; the
@@ -1325,6 +1338,9 @@ func (UnimplementedBrowserServer) InspectAtPosition(context.Context, *InspectAtP
 }
 func (UnimplementedBrowserServer) HighlightNode(context.Context, *HighlightNodeRequest) (*CommandResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method HighlightNode not implemented")
+}
+func (UnimplementedBrowserServer) GetNodeRef(context.Context, *GetNodeRefRequest) (*GetNodeRefResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetNodeRef not implemented")
 }
 func (UnimplementedBrowserServer) StartDomMirror(context.Context, *StartDomMirrorRequest) (*StartDomMirrorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StartDomMirror not implemented")
@@ -2200,6 +2216,24 @@ func _Browser_HighlightNode_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Browser_GetNodeRef_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetNodeRefRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(BrowserServer).GetNodeRef(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Browser_GetNodeRef_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(BrowserServer).GetNodeRef(ctx, req.(*GetNodeRefRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _Browser_StartDomMirror_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(StartDomMirrorRequest)
 	if err := dec(in); err != nil {
@@ -2810,6 +2844,10 @@ var Browser_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HighlightNode",
 			Handler:    _Browser_HighlightNode_Handler,
+		},
+		{
+			MethodName: "GetNodeRef",
+			Handler:    _Browser_GetNodeRef_Handler,
 		},
 		{
 			MethodName: "StartDomMirror",

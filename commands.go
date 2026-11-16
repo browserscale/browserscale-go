@@ -207,14 +207,16 @@ func (p *Page) Navigate(ctx context.Context, url string, timeoutMs float64) (*Na
 	return &NavigateResult{FrameId: resp.FrameId, Url: resp.Url}, nil
 }
 
-// LoadHTML serves a synthetic response for the next navigation to url.
+// LoadHTML navigates the page to url and serves html as the response.
 //
-// Registers a one-shot interceptor that intercepts the next request to url
-// and replies with the supplied html and headers instead of going to the
-// network. Useful for snapshotted pages, test fixtures, and offline replays.
-// Pair with [Page.Navigate] to trigger the load.
+// The page navigates as with [Page.Navigate], but the request for url never
+// reaches the network: it is answered with the supplied html, headers and
+// status code. The answer is used once; a later navigation to url, also a
+// reload, goes to the network again. Useful for snapshotted pages, test
+// fixtures, and offline replays. It returns once the response was handed to
+// the page, so wait for what the next step needs as after a navigation.
 //
-// @param url - the URL pattern that, when navigated to, returns the html
+// @param url - the URL the page will show the html under
 // @param html - the response body to serve
 // @param headers - extra response headers (Content-Type is set automatically)
 // @param statusCode - HTTP status code to serve; 0 means 200
@@ -228,7 +230,7 @@ func (p *Page) Navigate(ctx context.Context, url string, timeoutMs float64) (*Na
 // @example
 //
 //	_ = page.LoadHTML(ctx, "https://example.com", "<h1>hi</h1>", nil, 0)
-//	_, _ = page.Navigate(ctx, "https://example.com", 0)
+//	_, _ = page.Wait(ctx, browserscale.CSS("h1"))
 func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header, statusCode int32) error {
 	req := &generated.LoadHTMLRequest{
 		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
@@ -254,8 +256,8 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 // The expression's return value is JSON-serialized server-side and parsed
 // eagerly into [EvaluateResult.Value]. When the expression returns a DOM
 // element the [EvaluateResult.Value] is left empty and the element metadata
-// (BackendNodeId, IsVisible, Bounds) is populated instead — use Node(id)
-// in subsequent calls to act on it.
+// (Ref, IsVisible, Bounds) is populated instead — pass the Ref to
+// subsequent calls to act on it.
 //
 // A falsy answer and a broken expression are different outcomes. Returning
 // null, false or undefined is a successful evaluation and comes back as a
@@ -266,7 +268,7 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 //
 // @returns *EvaluateResult with either Value (for non-Element returns) or
 //
-//	BackendNodeId + IsVisible + Bounds (for Element returns)
+//	Ref + IsVisible + Bounds (for Element returns)
 //
 // @throws threw - the expression raised; the message carries the exception text
 // @throws not_run - it could not be compiled, or execution never started
@@ -295,41 +297,73 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 //	    // legitimately not ready yet
 //	}
 func (p *Page) Evaluate(ctx context.Context, expression string) (*EvaluateResult, error) {
-	return p.evaluate(ctx, "", expression)
+	return p.evaluate(ctx, nil, expression)
 }
 
-// EvaluateInFrame runs a JavaScript expression in the given frame.
+// EvaluateIn runs a JavaScript expression inside a container: in the
+// document of a frame, or scoped to an element.
 //
-// Same semantics as [Page.Evaluate] but targets a specific frame
-// instead of the main frame. Useful for evaluating inside OOPIFs (out-of-
-// process iframes) found via [CloudBrowser.Pages].
+// Same semantics as [Page.Evaluate], but the expression runs where the
+// container leads:
+//
+//   - a frame ([FrameURL], [FrameName], [FrameByID], or a [CSS], [JS] or
+//     reference locator naming an iframe element): that frame's document,
+//     same-origin or not
+//   - any other element: the document the element lives in, with the element
+//     itself available to the expression as __wrc.scope
+//
+// The container is looked up once, as the page is at that moment; it does
+// not wait for a frame that is still to come. Use [Page.Wait] first when it
+// may not be there yet. The result's Frame says which frame the expression
+// ran in.
 //
 // @inheritDoc [Page.Evaluate]
-// @param frameId - id of the frame to evaluate in; empty falls back to the main frame
+// @param container - where the expression runs; see [Locator.In]
+//
+// @throws container_not_found - the container, or one it is itself put in,
+// is not on the page; the message names the missing link
+// @throws outside_scope - the expression returned an element outside the
+// element the container confined it to
+// @throws [StaleRefError] - the container is a reference whose element is gone
 //
 // @example
 //
-//	pages, _ := browser.Pages(ctx)
-//	iframeId := pages[0].FrameTree.Children[0].FrameId
-//	_, _ = page.EvaluateInFrame(ctx, iframeId, "location.href")
-func (p *Page) EvaluateInFrame(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
-	return p.evaluate(ctx, frameId, expression)
+//	pay := browserscale.CSS("iframe[title='Secure payment']")
+//	title, err := page.EvaluateIn(ctx, pay, "document.title")
+//
+// @example
+//
+//	// Scoped to an element: how many rows does this table have?
+//	table := browserscale.CSS("table#orders")
+//	rows, err := page.EvaluateIn(ctx, table, "__wrc.scope.rows.length")
+func (p *Page) EvaluateIn(ctx context.Context, container *Locator, expression string) (*EvaluateResult, error) {
+	if err := container.validateContainer("EvaluateIn"); err != nil {
+		return nil, err
+	}
+	if err := container.validateChain("EvaluateIn"); err != nil {
+		return nil, err
+	}
+	if container.anyFrame {
+		return nil, errors.New("browserscale.EvaluateIn: AnyFrame names every frame, and an expression runs in one; name the frame")
+	}
+	return p.evaluate(ctx, container, expression)
 }
 
-func (p *Page) evaluate(ctx context.Context, frameId, expression string) (*EvaluateResult, error) {
+func (p *Page) evaluate(ctx context.Context, container *Locator, expression string) (*EvaluateResult, error) {
 	resp, err := p.client.Evaluate(ctx, &generated.EvaluateRequest{
 		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Expression: expression,
-		FrameId:    strPtr(frameId),
+		In:         container.chainWithSelf(),
 	})
 	if err != nil {
 		return nil, err
 	}
 	out := &EvaluateResult{
-		Success:       resp.Success,
-		BackendNodeId: resp.BackendNodeId,
-		IsVisible:     resp.IsVisible,
-		Bounds:        rectFromProto(resp.Bounds),
+		Success:   resp.Success,
+		Ref:       refLocator(resp.Ref, resp.Frame),
+		Frame:     frameRefFromProto(resp.Frame),
+		IsVisible: resp.IsVisible,
+		Bounds:    rectFromProto(resp.Bounds),
 	}
 	if resp.Result != "" {
 		if err := json.Unmarshal([]byte(resp.Result), &out.Value); err != nil {
@@ -339,9 +373,63 @@ func (p *Page) evaluate(ctx context.Context, frameId, expression string) (*Evalu
 	// An expression that threw arrives as success=false in the payload, not as a
 	// transport error. Surfaced through err so the res, err shape is unchanged.
 	if e := resp.GetError(); e != nil {
-		return out, &CommandError{Command: "evaluate", Code: e.Code, Message: e.Message}
+		return out, p.checked(ctx, container, &CommandError{Command: "evaluate", Code: e.Code, Message: e.Message})
 	}
 	return out, nil
+}
+
+// Frames returns the page's frame tree: the main frame, and below it every
+// iframe, nested the way the documents are.
+//
+// Each [FrameInfo] says what a frame shows (URL, name), where it sits and
+// whether a person can see it. It is for looking around: to find out which
+// frames a page has, and what would tell one from the others in a [FrameURL]
+// or [FrameName]. To act in a frame straight away, [FrameInfo.Locator] hands
+// it back as a container.
+//
+// A frame is not an element, so the tree carries no reference to the iframe
+// elements. Where the iframe element itself is needed (to click or scroll
+// it), name it with [CSS] or take it from [Page.Wait].
+//
+// @returns *FrameInfo of the main frame, with its Children
+//
+// @throws [PageClosedError] - the page has closed
+//
+// @example
+//
+//	frames, err := page.Frames(ctx)
+//	if err != nil {
+//	    log.Fatal(err)
+//	}
+//	frames.Walk(func(f *browserscale.FrameInfo, depth int) bool {
+//	    fmt.Printf("%s%s name=%q visible=%v\n", strings.Repeat("  ", depth), f.Url, f.Name, f.IsVisible)
+//	    return true
+//	})
+func (p *Page) Frames(ctx context.Context) (*FrameInfo, error) {
+	resp, err := p.client.GetPages(ctx, &generated.GetPagesRequest{
+		SessionId: p.sessionId, ApiKey: p.apiKey,
+	})
+	if err != nil {
+		return nil, err
+	}
+	if e := commandErrorFrom("getPages", resp.GetError()); e != nil {
+		return nil, e
+	}
+	for _, pg := range resp.GetPages() {
+		if pg.GetPageId() == p.id {
+			if f := frameInfoFromProto(pg.GetFrameTree()); f != nil {
+				return f, nil
+			}
+			return &FrameInfo{Url: pg.GetUrl()}, nil
+		}
+	}
+	// The page is not among the open ones: it has closed. Say so the way any
+	// other call on it does, with the page that has the focus now.
+	focused, err := p.browser.FocusedPage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return nil, &PageClosedError{PageId: p.id, FocusedPage: focused}
 }
 
 // ── Waiting ──
@@ -421,23 +509,29 @@ func (p *Page) GetDOM(ctx context.Context, frameId string, depth int32) (string,
 // re-read the current state afterwards.
 //
 // Each frame opens with header lines carrying the URL, the title and the
-// scroll position, then one line per visible element:
+// scroll position, then one line per element a person can see or act on:
 //
 //	input#email[47] type="email" name="loginId" value="a@b.com" required click "E-Mail"
 //
 // It spans every frame, pierces open and closed shadow roots, enumerates
-// <select> options, and reports live form state: value= is what is typed in
-// right now (passwords as a length), checked= for boxes. The trailing quoted
-// string is always the label or text, never the value, so an empty and a
-// prefilled field stay distinguishable. Because the headers already carry URL,
-// title and scroll offset, this replaces the usual handful of [Page.Evaluate]
-// probes after each step.
+// <select> options, and reports live state: value= is what is typed in right
+// now (passwords as a length), checked= for boxes, expanded= for menus and
+// accordions, and flags such as selected, focused, disabled or invalid. The
+// trailing quoted string is always the label or text, never the value, so an
+// empty and a prefilled field stay distinguishable. An element that cannot be
+// seen is listed only when it is interactive, with the reason as hidden="...".
+// When a dialog or a consent layer lies over the page, a header line
+// "# on top: ..." names it, and its rows carry the flag on-top. Because the
+// headers already carry URL, title and scroll offset, this replaces the usual
+// handful of [Page.Evaluate] probes after each step.
 //
-// On what to do with the result: backendNodeId (the 47 above) is a handle for
-// this session and can be passed straight to click/fill via [Node]. It does not
-// survive a new document, so for anything you write into a script, target with
-// [CSS] or [JS] instead — those calls return the backendNodeId they resolved to,
-// which lets you confirm the durable anchor hits the element you saw.
+// On what to do with the result: each frame's header carries a line
+// "# ref @<document>", and a row's number (the 47 above) followed by that
+// suffix is the element's reference: pass it to click/fill via [Ref]. It is a
+// handle for this session and does not survive a new document, so for anything
+// you write into a script, target with [CSS] or [JS] instead — those calls
+// return the reference they resolved to, which lets you confirm the durable
+// anchor hits the element you saw.
 //
 // @returns the observation in the requested format, ready to hand to a model
 //
@@ -473,7 +567,12 @@ func (p *Page) GetObservation(ctx context.Context) (string, error) {
 //
 //	// Re-read just one form after the first full look.
 //	obs, err = page.GetObservationWith(ctx, browserscale.ObservationOpts{
-//	    Selector: "form#register",
+//	    Scope: browserscale.CSS("form#register"),
+//	})
+//
+//	// Only what one frame shows.
+//	obs, err = page.GetObservationWith(ctx, browserscale.ObservationOpts{
+//	    Scope: browserscale.FrameURL("*checkout.example.com/*"),
 //	})
 func (p *Page) GetObservationWith(ctx context.Context, opts ObservationOpts) (string, error) {
 	return p.getObservation(ctx, opts)
@@ -485,10 +584,22 @@ func (p *Page) getObservation(ctx context.Context, o ObservationOpts) (string, e
 		MaxElementsPerFrame: intPtr(o.MaxElementsPerFrame),
 		MaxTextLength:       intPtr(o.MaxTextLength),
 		MaxTotalTokens:      intPtr(o.MaxTotalTokens),
-		BackendNodeId:       intPtr(o.BackendNodeId),
-		Selector:            strPtr(o.Selector),
-		JsExpression:        strPtr(o.JSExpression),
-		FrameId:             strPtr(o.InFrame),
+	}
+	if s := o.Scope; s != nil {
+		if err := s.validateContainer("GetObservation"); err != nil {
+			return "", err
+		}
+		if err := s.validateChain("GetObservation"); err != nil {
+			return "", err
+		}
+		if s.isElement() && !s.mustBeFrame {
+			// An element: its subtree, found where the locator says.
+			req.Ref, req.Selector, req.JsExpression = strPtr(s.ref), strPtr(s.selector), strPtr(s.jsExpression)
+			req.In = s.chain()
+		} else {
+			// A frame: the document the chain leads into.
+			req.In = s.chainWithSelf()
+		}
 	}
 	if o.Format != "" {
 		req.Format = strPtr(o.Format)
@@ -504,7 +615,7 @@ func (p *Page) getObservation(ctx context.Context, o ObservationOpts) (string, e
 		return "", err
 	}
 	if e := commandErrorFrom("getObservation", resp.GetError()); e != nil {
-		return "", e
+		return "", p.checked(ctx, o.Scope, e)
 	}
 	return resp.Observation, nil
 }
