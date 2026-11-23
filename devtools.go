@@ -251,8 +251,8 @@ func (p *Page) InsertText(ctx context.Context, text string) error {
 }
 
 // Type types text into the currently focused element as a per-key stream of
-// real keyboard events (keyDown/char/keyUp with the context's QWERTZ/QWERTY
-// layout and human cadence) — unlike [Page.InsertText], a single
+// real keyboard events (keyDown/char/keyUp on the keyboard layout of the
+// session's region, with human cadence) — unlike [Page.InsertText], a single
 // IME-style commit with no key events.
 //
 // Type is intentionally UNtargeted and loose: it does not locate or focus any

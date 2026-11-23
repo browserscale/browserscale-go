@@ -5884,7 +5884,15 @@ type EvaluateRequest struct {
 	// Where the expression runs (see Container): the document the chain leads
 	// to, with __wrc.scope set when it ends at an element. Empty: the main
 	// document. A chain has to lead to one document, so `any` is not for here.
-	In            []*Container `protobuf:"bytes,5,rep,name=in,proto3" json:"in,omitempty"`
+	In []*Container `protobuf:"bytes,5,rep,name=in,proto3" json:"in,omitempty"`
+	// A promise the expression answers with is waited for, and what it settles
+	// with is the result: its value, or "threw" with the reason it was rejected
+	// with. This is how long, in milliseconds (default 30000); after that the
+	// call fails with "timeout" and the promise goes on in the page.
+	Timeout *float64 `protobuf:"fixed64,6,opt,name=timeout,proto3,oneof" json:"timeout,omitempty"`
+	// Start the promise and do not wait for it: the call answers at once, with
+	// no value.
+	NoAwait       bool `protobuf:"varint,7,opt,name=no_await,json=noAwait,proto3" json:"no_await,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5954,9 +5962,24 @@ func (x *EvaluateRequest) GetIn() []*Container {
 	return nil
 }
 
+func (x *EvaluateRequest) GetTimeout() float64 {
+	if x != nil && x.Timeout != nil {
+		return *x.Timeout
+	}
+	return 0
+}
+
+func (x *EvaluateRequest) GetNoAwait() bool {
+	if x != nil {
+		return x.NoAwait
+	}
+	return false
+}
+
 type EvaluateResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// JSON-serialized result. Empty for DOM elements or unserializable values.
+	// What a promise resolved to, where the expression answered with one.
 	Result string `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 	// Set if the expression returned a DOM element: a reference to it.
 	Ref       string `protobuf:"bytes,2,opt,name=ref,proto3" json:"ref,omitempty"`
@@ -5967,7 +5990,12 @@ type EvaluateResponse struct {
 	// False iff the expression never produced a value (then error is present).
 	// An expression that answers falsy is a success, so a broken expression is
 	// never mistaken for a false one.
-	Success       bool          `protobuf:"varint,5,opt,name=success,proto3" json:"success,omitempty"`
+	Success bool `protobuf:"varint,5,opt,name=success,proto3" json:"success,omitempty"`
+	// Codes: "threw" (the expression raised, or its promise was rejected),
+	// "not_run", "aborted", "no_context", "container_not_found", "stale_ref",
+	// "outside_scope", "timeout" (the promise did not settle in time),
+	// "document_gone" (the page navigated or reloaded, or the frame was removed,
+	// before the answer).
 	Error         *CommandError `protobuf:"bytes,6,opt,name=error,proto3,oneof" json:"error,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -14635,7 +14663,7 @@ const file_wrc_proto_rawDesc = "" +
 	"\aheaders\x18\x06 \x03(\v2\x17.browserscale.v1.HeaderR\aheaders\x12$\n" +
 	"\vstatus_code\x18\a \x01(\x05H\x00R\n" +
 	"statusCode\x88\x01\x01B\x0e\n" +
-	"\f_status_code\"\xae\x01\n" +
+	"\f_status_code\"\xf4\x01\n" +
 	"\x0fEvaluateRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x17\n" +
@@ -14644,7 +14672,11 @@ const file_wrc_proto_rawDesc = "" +
 	"\n" +
 	"expression\x18\x04 \x01(\tR\n" +
 	"expression\x12*\n" +
-	"\x02in\x18\x05 \x03(\v2\x1a.browserscale.v1.ContainerR\x02in\"\x99\x02\n" +
+	"\x02in\x18\x05 \x03(\v2\x1a.browserscale.v1.ContainerR\x02in\x12\x1d\n" +
+	"\atimeout\x18\x06 \x01(\x01H\x00R\atimeout\x88\x01\x01\x12\x19\n" +
+	"\bno_await\x18\a \x01(\bR\anoAwaitB\n" +
+	"\n" +
+	"\b_timeout\"\x99\x02\n" +
 	"\x10EvaluateResponse\x12\x16\n" +
 	"\x06result\x18\x01 \x01(\tR\x06result\x12\x10\n" +
 	"\x03ref\x18\x02 \x01(\tR\x03ref\x12\x1d\n" +
@@ -16104,6 +16136,7 @@ func file_wrc_proto_init() {
 	file_wrc_proto_msgTypes[66].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[67].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[68].OneofWrappers = []any{}
+	file_wrc_proto_msgTypes[69].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[70].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[71].OneofWrappers = []any{}
 	file_wrc_proto_msgTypes[72].OneofWrappers = []any{}

@@ -251,6 +251,26 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 
 // ── Evaluation ──
 
+// EvaluateOpts customizes a [Page.EvaluateWith] call.
+// Zero/empty values mean "use the default".
+type EvaluateOpts struct {
+	// In is where the expression runs, as the container of [Page.EvaluateIn]:
+	// a frame, or an element the expression then sees as __wrc.scope. nil is
+	// the main document.
+	In *Locator
+
+	// TimeoutMs is how long a promise the expression answers with is waited
+	// for, in milliseconds. 0 = 30000. After that the call fails with
+	// "timeout" and the promise goes on in the page.
+	TimeoutMs float64
+
+	// NoAwait starts a promise without waiting for it: the call returns at
+	// once, with no value. For work that goes on while the script does
+	// something else; keep the promise in a variable of the page to come back
+	// to it.
+	NoAwait bool
+}
+
 // Evaluate runs a JavaScript expression in the page's main frame.
 //
 // The expression's return value is JSON-serialized server-side and parsed
@@ -258,6 +278,17 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 // element the [EvaluateResult.Value] is left empty and the element metadata
 // (Ref, IsVisible, Bounds) is populated instead — pass the Ref to
 // subsequent calls to act on it.
+//
+// A promise is waited for: the call returns when it settles, with the value
+// it resolved to, and a rejected one comes back as a [*CommandError] with the
+// code "threw". The wait ends after 30s with "timeout"; [Page.EvaluateWith]
+// sets another time, or starts the promise without waiting. The expression may
+// use await directly. It then runs as the body of an async function: a single
+// expression is the value, several statements end with return.
+//
+// The page sees nothing of the expression: what it throws is not reported to
+// the page's error handling, and a promise is watched without subscribing to
+// it.
 //
 // A falsy answer and a broken expression are different outcomes. Returning
 // null, false or undefined is a successful evaluation and comes back as a
@@ -270,12 +301,18 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 //
 //	Ref + IsVisible + Bounds (for Element returns)
 //
-// @throws threw - the expression raised; the message carries the exception text
+// @throws threw - the expression raised, or the promise it answered with was
+// rejected; the message carries the exception text
+// @throws timeout - the promise did not settle in time; it goes on in the page
+// @throws document_gone - the page navigated or reloaded, or the frame was
+// removed, before the expression answered
 // @throws not_run - it could not be compiled, or execution never started
 // @throws aborted - execution was stopped by the browser before it finished
 // @throws no_context - the frame had no live script context to evaluate in
 //
 // @see [CommandError] for recovering the code with errors.As
+//
+// @see [Page.EvaluateWith] for a timeout, or to start a promise without waiting
 //
 // @example
 //
@@ -284,6 +321,12 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 //	    log.Fatal(err)
 //	}
 //	fmt.Println(res.Value)
+//
+// @example
+//
+//	// A promise is waited for; await works as well.
+//	items, err := page.Evaluate(ctx, "fetch('/api/items').then(r => r.json())")
+//	count, err := page.Evaluate(ctx, "(await (await fetch('/api/items')).json()).length")
 //
 // @example
 //
@@ -297,7 +340,47 @@ func (p *Page) LoadHTML(ctx context.Context, url, html string, headers []Header,
 //	    // legitimately not ready yet
 //	}
 func (p *Page) Evaluate(ctx context.Context, expression string) (*EvaluateResult, error) {
-	return p.evaluate(ctx, nil, expression)
+	return p.evaluate(ctx, nil, expression, EvaluateOpts{})
+}
+
+// EvaluateWith is the customizable variant of [Page.Evaluate] and
+// [Page.EvaluateIn].
+//
+// @inheritDoc [Page.Evaluate]
+// @param opts - where the expression runs, how long a promise is waited for,
+// or that it is not waited for; see [EvaluateOpts]
+//
+// @throws container_not_found - the container in opts.In, or one it is itself
+// put in, is not on the page; the message names the missing link
+// @throws outside_scope - the expression returned an element outside the
+// element opts.In confined it to
+// @throws [StaleRefError] - opts.In is a reference whose element is gone
+//
+// @example
+//
+//	// A report that takes longer than the default 30s.
+//	res, err := page.EvaluateWith(ctx, "buildReport()", browserscale.EvaluateOpts{TimeoutMs: 120000})
+//	var ce *browserscale.CommandError
+//	if errors.As(err, &ce) && ce.Code == "timeout" {
+//	    // still running in the page; only the call gave up
+//	}
+//
+// @example
+//
+//	// Start work and come back to it: the call returns at once.
+//	_, err := page.EvaluateWith(ctx, "window.job = crawl(urls)", browserscale.EvaluateOpts{NoAwait: true})
+//	// ... other steps ...
+//	rows, err := page.EvaluateWith(ctx, "window.job", browserscale.EvaluateOpts{TimeoutMs: 300000})
+func (p *Page) EvaluateWith(ctx context.Context, expression string, opts EvaluateOpts) (*EvaluateResult, error) {
+	if opts.TimeoutMs < 0 {
+		return nil, errors.New("browserscale.EvaluateWith: TimeoutMs must not be negative")
+	}
+	if opts.In != nil {
+		if err := checkEvaluateContainer("EvaluateWith", opts.In); err != nil {
+			return nil, err
+		}
+	}
+	return p.evaluate(ctx, opts.In, expression, opts)
 }
 
 // EvaluateIn runs a JavaScript expression inside a container: in the
@@ -337,23 +420,33 @@ func (p *Page) Evaluate(ctx context.Context, expression string) (*EvaluateResult
 //	table := browserscale.CSS("table#orders")
 //	rows, err := page.EvaluateIn(ctx, table, "__wrc.scope.rows.length")
 func (p *Page) EvaluateIn(ctx context.Context, container *Locator, expression string) (*EvaluateResult, error) {
-	if err := container.validateContainer("EvaluateIn"); err != nil {
+	if err := checkEvaluateContainer("EvaluateIn", container); err != nil {
 		return nil, err
 	}
-	if err := container.validateChain("EvaluateIn"); err != nil {
-		return nil, err
-	}
-	if container.anyFrame {
-		return nil, errors.New("browserscale.EvaluateIn: AnyFrame names every frame, and an expression runs in one; name the frame")
-	}
-	return p.evaluate(ctx, container, expression)
+	return p.evaluate(ctx, container, expression, EvaluateOpts{})
 }
 
-func (p *Page) evaluate(ctx context.Context, container *Locator, expression string) (*EvaluateResult, error) {
+// checkEvaluateContainer says whether an expression can run in the container.
+func checkEvaluateContainer(method string, container *Locator) error {
+	if err := container.validateContainer(method); err != nil {
+		return err
+	}
+	if err := container.validateChain(method); err != nil {
+		return err
+	}
+	if container.anyFrame {
+		return errors.New("browserscale." + method + ": AnyFrame names every frame, and an expression runs in one; name the frame")
+	}
+	return nil
+}
+
+func (p *Page) evaluate(ctx context.Context, container *Locator, expression string, opts EvaluateOpts) (*EvaluateResult, error) {
 	resp, err := p.client.Evaluate(ctx, &generated.EvaluateRequest{
 		SessionId: p.sessionId, PageId: p.id, ApiKey: p.apiKey,
 		Expression: expression,
 		In:         container.chainWithSelf(),
+		Timeout:    floatPtrIfNonZero(opts.TimeoutMs),
+		NoAwait:    opts.NoAwait,
 	})
 	if err != nil {
 		return nil, err

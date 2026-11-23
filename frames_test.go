@@ -519,6 +519,37 @@ func TestEvaluateIn(t *testing.T) {
 		t.Fatalf("Evaluate sent a chain: %q", describeChain(fb.evaluate.In))
 	}
 
+	if fb.evaluate.Timeout != nil || fb.evaluate.NoAwait {
+		t.Fatalf("Evaluate sent options: %+v", fb.evaluate)
+	}
+
+	// EvaluateWith carries the container, the time and whether to wait.
+	if _, err := page.EvaluateWith(ctx, "load()", EvaluateOpts{In: pay, TimeoutMs: 120000}); err != nil {
+		t.Fatal(err)
+	}
+	if got := describeChain(fb.evaluate.In); got != "css:iframe[title='Secure payment']" || fb.evaluate.GetTimeout() != 120000 || fb.evaluate.NoAwait {
+		t.Fatalf("EvaluateWith sent %q, %+v", got, fb.evaluate)
+	}
+	if _, err := page.EvaluateWith(ctx, "window.job = load()", EvaluateOpts{NoAwait: true}); err != nil {
+		t.Fatal(err)
+	}
+	if len(fb.evaluate.In) != 0 || fb.evaluate.Timeout != nil || !fb.evaluate.NoAwait {
+		t.Fatalf("EvaluateWith sent %+v", fb.evaluate)
+	}
+	if _, err := page.EvaluateWith(ctx, "1", EvaluateOpts{TimeoutMs: -1}); err == nil {
+		t.Error("a negative timeout was accepted")
+	}
+	if _, err := page.EvaluateWith(ctx, "1", EvaluateOpts{In: AnyFrame()}); err == nil {
+		t.Error("any frame was accepted as a container")
+	}
+	// A promise that doesn't settle in time is a CommandError with its code.
+	fb.evalResult = &generated.EvaluateResponse{Error: &generated.CommandError{Code: "timeout", Message: "The promise did not settle within 500 ms. It goes on in the page."}}
+	_, err = page.EvaluateWith(ctx, "new Promise(() => {})", EvaluateOpts{TimeoutMs: 500})
+	var timedOut *CommandError
+	if !errors.As(err, &timedOut) || timedOut.Code != "timeout" || timedOut.Command != "evaluate" {
+		t.Fatalf("err = %v", err)
+	}
+
 	// An element comes back as a reference.
 	fb.evalResult = &generated.EvaluateResponse{Success: true, Ref: "5@" + docA, Frame: &generated.FrameRef{FrameId: "M", Main: true}}
 	res, _ = page.Evaluate(ctx, "document.body")
